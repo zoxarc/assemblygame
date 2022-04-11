@@ -12,7 +12,7 @@ health dw 3
 pcolor dw 4
 pdir dw ?
 dtimer dw 0
-FARDATA bufferseg
+FARDATA bufferseg ;the buffer
 buffer db 64000 dup(12h)
 
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~
