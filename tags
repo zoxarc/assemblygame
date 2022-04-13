@@ -10,7 +10,6 @@
 !_TAG_PROGRAM_URL	https://ctags.io/	/official site/
 !_TAG_PROGRAM_VERSION	5.9.0	//
 
-r	project.asm	/^$/;"	l
 
 wall	project.asm	/^wall dw ?$/;"	l
 pcor	project.asm	/^pcor dw  ?  ; coordinates for player$/;"	l
@@ -21,12 +20,15 @@ health	project.asm	/^health dw 3$/;"	l
 pcolor	project.asm	/^pcolor dw 4$/;"	l
 pdir	project.asm	/^pdir dw ?$/;"	l
 dtimer	project.asm	/^dtimer dw 0$/;"	l
+
+callpixel	project.asm	/^macro callpixel p1,p2$/;"	l
 callrect	project.asm	/^macro callrect p1,p2$/;"	l
 pixel	project.asm	/^macro pixel p1,p2$/;"	l
 calc	project.asm	/^macro calc p1,p2,p3$/;"	l
 callplayer	project.asm	/^macro callplayer p1,p2,p3$/;"	d
 life	project.asm	/^macro life$/;"	v
 buffer	project.asm	/^buffer db 64000 dup(12h)$/;"	l
+bufferseg	project.asm	/^FARDATA bufferseg ;the buffer$/;"	l
 
 pixeltobuffer	project.asm	/^proc pixeltobuffer   ;First push y second x third color$/;"	l
 buffertoscreen	project.asm	/^proc buffertoscreen$/;"	l
@@ -38,3 +40,14 @@ hitdetected	project.asm	/^proc hitdetected$/;"	l
 direction	project.asm	/^proc direction$/;"	l
 lvl1	project.asm	/^proc lvl1$/;"	l
 mlaser	project.asm	/^proc mlaser$/;"	l
+
+drawleftplayer	project.asm	/^proc drawleftplayer$/;"	l 
+drawrightplayer	project.asm	/^proc drawrightplayer$/;"	l 
+drawfrontplayer	project.asm	/^proc drawfrontplayer$/;"	l
+drawbackplayer	project.asm	/^proc drawbackplayer$/;"	l
+player	project.asm	/^proc player$/;"	l 
+clearplayer	project.asm	/^proc clearplayer$/;"	l 
+pclear	project.asm	/^macro pclear p1,p2$/;"	l 
+callplayer	project.asm	/^macro callplayer p1$/;"	l 
+
+start	project.asm	/^start:$/;"	l

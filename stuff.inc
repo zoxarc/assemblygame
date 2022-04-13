@@ -1,26 +1,32 @@
 
 ; draw the player character
-proc drawplayer
+proc drawfrontplayer
 mov bp,sp
-mov cx,[bp+6]
-mov dx,[bp+4]
-mov bx,[bp+2]
-pixel cx bx
-add cx,640
-pixel cx dx
-add cx,2
-pixel cx bx
-sub cx,4
-pixel cx bx
-add cx,642
-pixel cx bx
-add cx,640
-pixel cx bx
-add cx,640
-pixel cx bx
-add cx,642
-pixel cx bx
-sub cx,4
-pixel cx bx
-ret 6
-endp drawplayer
+mov di,[bp+2]
+mov cx,3
+@fronthair:
+inc di
+mov [es:di],6h
+dec cx
+jnz @fronthair
+add di,318
+mov [es:di],28h
+inc di
+mov [es:di],0Fh
+inc di
+mov [es:di],60h
+add di,317
+mov cx,3
+@frontface:
+inc di
+mov [es:di],42h
+dec cx
+jnz @frontface
+add di,317
+mov [es:di],77h
+
+
+
+
+ret 2
+endp drawfrontplayer
