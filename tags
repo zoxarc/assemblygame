@@ -25,7 +25,6 @@ callpixel	project.asm	/^macro callpixel p1,p2$/;"	l
 callrect	project.asm	/^macro callrect p1,p2$/;"	l
 pixel	project.asm	/^macro pixel p1,p2$/;"	l
 calc	project.asm	/^macro calc p1,p2,p3$/;"	l
-callplayer	project.asm	/^macro callplayer p1,p2,p3$/;"	d
 life	project.asm	/^macro life$/;"	v
 buffer	project.asm	/^buffer db 64000 dup(12h)$/;"	l
 bufferseg	project.asm	/^FARDATA bufferseg ;the buffer$/;"	l
@@ -45,9 +44,9 @@ drawleftplayer	project.asm	/^proc drawleftplayer$/;"	l
 drawrightplayer	project.asm	/^proc drawrightplayer$/;"	l 
 drawfrontplayer	project.asm	/^proc drawfrontplayer$/;"	l
 drawbackplayer	project.asm	/^proc drawbackplayer$/;"	l
-player	project.asm	/^proc player$/;"	l 
+cplayer	project.asm	/^proc cplayer$/;"	l 
 clearplayer	project.asm	/^proc clearplayer$/;"	l 
 pclear	project.asm	/^macro pclear p1,p2$/;"	l 
-callplayer	project.asm	/^macro callplayer p1$/;"	l 
+player	project.asm	/^macro player p1$/;"	l 
 
 start	project.asm	/^start:$/;"	l

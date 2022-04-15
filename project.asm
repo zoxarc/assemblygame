@@ -56,19 +56,19 @@ pop cx
 pop ax
 endm calc
 
-macro callplayer p1
+macro player p1
 push ax
 push cx
 push di
 push bx
 push p1
 push [pdir]
-call player
+call cplayer
 pop bx
 pop di
 pop cx
 pop ax
-endm callplayer
+endm player
 
 macro pclear p1,p2
 push ax
@@ -208,18 +208,29 @@ endp hitdetected
 proc drawfrontplayer
 mov bp,sp
 mov di,[bp+2]
+add di,2
+mov [byte ptr es:di],4
+add di,318
 mov cx,3
+@fronthat:
+inc di
+mov [byte ptr es:di],28h
+dec cx
+jnz @fronthat
+add di,317
+mov cx,4
 @fronthair:
 inc di
-mov [byte ptr es:di],6h
+mov [byte ptr es:di],52h
 dec cx
 jnz @fronthair
-add di,318
-mov [byte ptr es:di],28h
+add di,317
+mov [byte ptr es:di],5h
 inc di
 mov [byte ptr es:di],0Fh
 inc di
-mov [byte ptr es:di],28h
+mov [byte ptr es:di],5h
+mov [byte ptr es:di+2],52h
 add di,317
 mov cx,3
 @frontface:
@@ -258,17 +269,26 @@ endp drawfrontplayer
 proc drawbackplayer
 mov bp,sp
 mov di,[bp+2]
-mov ch,2
-@backhair1:
+add di,2
+mov [byte ptr es:di],4
+add di,318
+mov ch,3
+mov al,28h
+mov ah,52h
 mov cl,3
-@backhair2:
+mov [byte ptr es:di+324],52h
+mov [byte ptr es:di+645],52h
+@backhair:
 inc di
-mov [byte ptr es:di],6h
+mov [byte ptr es:di],al
 dec cl
-jnz @backhair2
+jnz @backhair
 add di,317
+mov al,ah
+mov ah,6h
+mov cl,3
 dec ch
-jnz @backhair1
+jnz @backhair
 mov cl,3
 @scalp:
 inc di
@@ -305,13 +325,28 @@ endp drawbackplayer
 proc drawrightplayer
 mov bp,sp
 mov di,[bp+2]
+add di,3
+mov [byte ptr es:di],4h
+add di,318
 mov cl,3
+mov ch,2
+mov ah,52h
+mov al,28h
+
 @righthair:
 inc di
-mov [byte ptr es:di],6h
+mov [byte ptr es:di],al
 dec cl
 jnz @righthair
-add di,318
+add di,317
+mov al,52h
+mov cl,3
+dec ch
+jnz @righthair
+
+mov [byte ptr es:di-320],52h
+mov [byte ptr es:di-1],52h
+inc di
 mov [byte ptr es:di],6h
 inc di
 mov [byte ptr es:di],60h
@@ -355,13 +390,25 @@ endp drawrightplayer
 proc drawleftplayer
 mov bp,sp
 mov di,[bp+2]
+add di,2
+mov [byte ptr es:di],4
+add di,318
+mov al,28h
 mov cl,3
+mov ch,2
 @lefthair:
 inc di
-mov [byte ptr es:di],6h
+mov [byte ptr es:di],al
 dec cl
 jnz @lefthair
-add di,318
+add di,317
+mov al,52h
+mov cl,3
+dec ch
+jnz @lefthair
+inc di
+mov [byte ptr es:di-317],52h
+mov [byte ptr es:di+4],52h
 mov [byte ptr es:di],4h
 inc di
 mov [byte ptr es:di],60h
@@ -402,8 +449,9 @@ mov [byte ptr es:di+2],00h
 ret 2
 endp drawleftplayer
 
-proc player
+proc cplayer
 mov bp,sp
+mov si,[bp+4]
 push [bp+4]
 mov cx,[bp+2] ;cx is the direction of the player
 cmp cx,2  ; 0 is left, 1 is up, 2 is right, 3 is down
@@ -425,23 +473,24 @@ call drawbackplayer
 jmp @pdend
 
 @pdend:
+mov [byte ptr es:si],4
 ret 4
-endp player
+endp cplayer
 
-;player is 7x5
+;player is 9x6
 proc clearplayer
 mov bp,sp
 mov di,[bp+4]
 mov al,[bp+2]
-mov ch,8
+mov ch,9
 @clearloop1:
-mov cl,8
+mov cl,6
 @clearloop2:
 mov [byte ptr es:di],al
 inc di
 dec cl
 jnz @clearloop2
-add di,312
+add di,314
 dec ch
 jnz @clearloop1
 
@@ -450,8 +499,8 @@ endp clearplayer
 
 proc lvl1
 life
-calc pcor 100 160
-callplayer [pcor]
+calc pcor 27 30
+player [pcor]
 calc wall 20 20
 mov cx,280
 lvl1loop1:
@@ -477,6 +526,13 @@ pixel [wall] 15
 sub [wall],320
 dec cx
 jnz lvl1loop4
+calc wall 40 20
+mov cx,60
+@lvl1wall1:
+pixel [wall] 15
+inc [wall]
+dec cx
+jnz @lvl1wall1
 
 calc wall 28 260
 pixel [wall] 06h
@@ -518,6 +574,7 @@ int 16h             ;Get the input and clean the buffer
 pclear [pcor] 12h 
 mov bx,[pcor]
 mov [pcorbackup],bx ;save the current location of the player in case there's a collision
+xor bx,bx
 cmp ah,11h          ;find if the input matches w,a,s,d,esc
 je @wpressed
 cmp ah,1fh
@@ -531,7 +588,7 @@ je @interact
 
 cmp ah,1h           
 je @exitcp
-callplayer [pcor]
+player [pcor]
 jmp @waitforkey
 
 @wpressed:
@@ -568,51 +625,66 @@ je @lever
 
 @collisioncheck:
 mov di,[pcor]
+mov cl,6
+mov ch,2
+
+@topck:
 cmp [byte ptr es:di],12h
-jne @collisionfound
+jne @collision2ck
 inc di
+dec cl
+jnz @topck
+mov cl,6
+add di,2874
+dec ch
+jnz @topck
+mov di,[pcor]
+mov cl,9
+mov ch,2
+@sideck:
 cmp [byte ptr es:di],12h
-jne @collisionfound
+jne @collision2ck
 add di,320
-cmp [byte ptr es:di],12h
-jne @collisionfound
-dec di
-cmp [byte ptr es:di],12h
-jne @collisionfound
-sub di,320
-cmp [byte ptr es:di],12h
-jne @collisionfound
-;@@collisioncheck:
-;cmp [byte ptr es:di],0
-;jne @collisionfound
-;mov cl,6
-;@@innercc:
-;add di,320
-;cmp [byte ptr es:di],0
-;jne @collisionfound
-;dec cl
-;jnz @@innercc
-;mov cl,3
-;@@outercc:
-;inc di
-;cmp [byte ptr es:di],0
-;jne @collisionfound
-;dec cl
-;jnz @@outercc
-;sub di,1280
-;mov cl,6
-;@@collisioncheck1:
-;add di,320
-;cmp [byte ptr es:di],0
-;jne @collisionfound
-;dec cl
-;jnz @@collisioncheck1
-
-
+dec cl
+jnz @sideck
+mov cl,9
+sub di,2874
+dec ch
+jnz @sideck
+jmp @moveplayer
 
 @moveplayer:
-callplayer [pcor]
+player [pcor]
 jmp @waitforkey
+
+@collision2ck:
+cmp bl,0
+jg @collisionfound
+mov di,[pcor]
+mov cx,[pdir]
+cmp cx,2
+je @ckright
+jcxz @ckleft
+jb @ckup
+js @ckdown
+@ckright:
+dec di
+jmp @ck2e
+@ckleft:
+inc di
+jmp @ck2e
+@ckup:
+add di,320
+jmp @ck2e
+@ckdown:
+sub di,320
+jmp @ck2e
+
+@ck2e:
+inc bl
+mov [pcor],di
+jmp @collisioncheck
+
 
 @collisionfound:
 cmp [byte ptr es:di],9
