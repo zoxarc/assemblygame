@@ -1,10 +1,10 @@
 
  Start  Stop   Length Name               Class
 
- 00000H 006F3H 006F4H _TEXT              CODE
- 00700H 00711H 00012H _DATA              DATA
- 00720H 0081FH 00100H STACK              STACK
- 00820H 1021FH 0FA00H BUFFERSEG          FAR_DATA
+ 00000H 00A9EH 00A9FH _TEXT              CODE
+ 00AA0H 00AE1H 00042H _DATA              DATA
+ 00AF0H 00BEFH 00100H STACK              STACK
+ 00BF0H 105EFH 0FA00H BUFFERSEG          FAR_DATA
 
-Program entry point at 0000:0557
+Program entry point at 0000:0911
 

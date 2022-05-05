@@ -6,12 +6,12 @@ DATASEG
 wall dw ?
 pcor dw  ?  ; coordinates for player
 pcorbackup dw ? ; Backup of pcor
-laser dw ?
-maxhealth dw 3  ;the max amount of health the player can have
-health dw 3     ;how much health the player has now
-pcolor dw 4
-pdir dw 3       ;the direction of the player
+maxhealth dw 20  ;the max amount of health the player can have
+health dw 20     ;how much health the player has now
+pdir dw 2       ;the direction of the player
 dtimer dw 0
+lasert dw 0
+laser db 50 dup(0)
 FARDATA bufferseg ;the buffer
 buffer db 64000 dup(12h)
 
@@ -82,16 +82,31 @@ pop di
 pop ax
 endm pclear
 
-macro life
+macro horline p1,p2,p3
 push ax
 push bx
-push [maxhealth]
-push [health]
-call lives
+push cx
+push p1
+push p2
+push p3
+call drawhorline
+pop cx
 pop bx
 pop ax
-endm life
+endm horline
 
+macro verline p1,p2,p3
+push ax
+push bx
+push cx
+push p1
+push p2
+push p3
+call drawverline
+pop cx
+pop bx
+pop ax
+endm verline
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CODESEG
@@ -102,9 +117,8 @@ proc buffertoscreen
 mov ax,bufferseg      
 mov ds,ax              ;ds = segment for buffer
 xor si,si              ;si = address for buffer copy
-mov ax,0A000h          
-mov di,ax              ;di = address for display memory
 xor di,di
+mov ax,0A000h          
 mov es,ax              ;es = segment for display memory
 mov cx,32000       ;cx = number of words to copy
 cld                    ;Make sure direction flag is clear
@@ -115,6 +129,22 @@ mov ax, bufferseg
 mov es,ax              ;es = segment for buffer
 ret
 endp buffertoscreen
+
+proc clearscreen
+xor di,di
+mov cx,32000
+mov ax,1212h
+cld
+rep stosw
+ret
+endp clearscreen
+
+proc reset
+call clearscreen
+call lvl2
+call buffertoscreen
+ret
+endp reset
 
 ;draw a rectangle using the coordinate as the top left pixel - currently broken
 proc drawrect
@@ -164,9 +194,8 @@ endp rect2x2
 
 ;procedure to draw the player lives on screen
 proc lives
-mov bp,sp
-mov ax,[bp+2]
-mov bx,[bp+4]
+mov ax,[health]
+mov bx,[maxhealth]
 calc wall 10 10  ;calc the coordinates of the hearts
 cmp bx,ax   ;check if player has max health
 je @redlives
@@ -182,7 +211,7 @@ add [wall],5
 dec ax
 jnz @redlives
 @livesend:
-ret 4
+ret 
 endp lives
 
 proc coordinatecalc
@@ -202,7 +231,85 @@ pixel [pcor] 28h
 ret
 endp hitdetected
 
+proc mlaser
+xor si,si
+mov si,1
+mov ah,[byte ptr laser]
+inc ah
+cmp ah,1
+je @laserend
+@laserload:
+mov di,[word ptr laser+si]
+mov al,[byte ptr laser+si+2]
+cmp al,1
+je @laserup
+jz @laserside
+@laserside:
+dec di
+mov [byte ptr es:di],12h
+add di,2
+cmp [byte ptr es:di],12h
+je @sidecontinue
+push di
+dec di
+jne @laserhit
+@sidecontinue:
+mov [byte ptr es:di],36h
+mov [word ptr laser+si],di
+mov di,[word ptr laser+si+3]
+mov [byte ptr es:di-1],15
+mov [byte ptr es:di],15
+jmp @laserend
 
+@laserup:
+sub di,320
+mov [byte ptr es:di],12h
+add di,640
+cmp [byte ptr es:di],12h
+je @upcontinue
+push di
+sub di,320
+jne @laserhit
+@upcontinue:
+mov [byte ptr es:di],36h
+mov [word ptr laser+si],di
+mov di,[word ptr laser+si+3]
+mov [byte ptr es:di-320],15
+mov [byte ptr es:di],15
+jmp @laserend
+
+@laserhit:
+mov [byte ptr es:di],12h
+mov bx,[word ptr laser+si+3]
+mov [word ptr laser+si],bx
+call laserck
+
+@laserend:
+add si,5
+dec ah
+jnz @laserload
+ret 
+endp mlaser
+
+proc laserck
+mov bp,sp
+mov di,[bp+2]
+cmp [byte ptr es:di],15
+je @lackend
+
+dec [health]
+jz @lad
+push ax
+call lives
+pop ax
+jmp @lackend
+
+@lad:
+jmp exit
+
+@lackend:
+ret 2
+endp laserck
 
 ; draw the player character, each proc draws the player from a different side
 proc drawfrontplayer
@@ -497,54 +604,158 @@ jnz @clearloop1
 ret 4
 endp clearplayer
 
-proc lvl1
-life
-calc pcor 27 30
+proc drawhorline
+mov bp,sp
+mov ax,[bp+6]
+xor bx,bx
+mov bl,[bp+4]
+mov cl,[bp+2]
+@horloop:
+pixel ax bx
+add ax,2
+dec cl
+jnz @horloop
+
+ret 6
+endp drawhorline
+
+proc drawverline
+mov bp,sp
+mov ax,[bp+6]
+xor bx,bx
+mov bl,[bp+4]
+mov cl,[bp+2]
+@verloop:
+pixel ax bx
+add ax,640
+dec cl
+jnz @verloop
+
+ret 6
+endp drawverline
+
+;180 20 , 20 20
+proc drawlvlframe
+call lives
 player [pcor]
 calc wall 20 20
 mov cx,280
-lvl1loop1:
+frameloop1:
 pixel [wall] 15
 inc [wall]
 dec cx
-jnz lvl1loop1 
+jnz frameloop1 
 mov cx,160
-lvl1loop2:
+frameloop2:
 pixel [wall] 15
 add [wall],320
 dec cx
-jnz lvl1loop2
+jnz frameloop2
 mov cx,280
-lvl1loop3:
+frameloop3:
 pixel [wall] 15
 dec [wall]
 dec cx
-jnz lvl1loop3
+jnz frameloop3
 mov cx,160
-lvl1loop4:
+frameloop4:
 pixel [wall] 15
 sub [wall],320
 dec cx
-jnz lvl1loop4
+jnz frameloop4
+
+ret
+endp drawlvlframe
+
+proc lvl1
+calc pcor 25 25
+call drawlvlframe
 calc wall 40 20
-mov cx,60
+mov cx,30
 @lvl1wall1:
 pixel [wall] 15
-inc [wall]
+add [wall],2
 dec cx
 jnz @lvl1wall1
 
-calc wall 28 260
-pixel [wall] 06h
+calc wall 20 120 
+pixel [wall] 4
+mov cx,60
+@lvl1wall2:
+pixel [wall] 15
+add [wall],640
+dec cx
+jnz @lvl1wall2
 
+calc wall 42 78 
+mov cx,69
+@lvl1wall3:
+pixel [wall] 9
+add [wall],640
+dec cx
+jnz @lvl1wall3
+
+
+calc wall 42 130 
+mov cx,30
+@lvl1wall4:
+pixel [wall] 9
+add [wall],2
+dec cx
+jnz @lvl1wall4
+pixel [wall] 15
+sub [wall],62
+mov cl,4
+@lvl1wall5:
+pixel [wall] 15
+sub [wall],2
+dec cl
+jnz @lvl1wall5
+calc wall 42 190
+pixel [wall] 15
+
+calc wall 42 298 
+mov cl,4
+@lvl1wall6:
+pixel [wall] 15
+sub [wall],2
+dec cl
+jnz @lvl1wall6
+mov cx,30
+@lvl1wall7:
+pixel [wall] 9
+sub [wall],2
+dec cx
+jnz @lvl1wall7
+pixel [wall] 15
+calc wall 28 260
+pixel [wall] 30h
+
+mov [byte ptr laser],2
+calc lasert 139 120
+mov di,[lasert]
+mov [word ptr laser+1],di
+mov [word ptr laser+4],di
+mov [byte ptr laser+3],1
+inc di
+mov [word ptr laser+6],di
+mov [word ptr laser+9],di
+mov [byte ptr laser+8],1
+mov [lasert],0
 ret 
 endp lvl1
 
+proc lvl2
+calc pcor 170 22
+call drawlvlframe
+mov [byte ptr laser],0
+mov [lasert],0
+calc wall 168 22
+horline [wall] 9 10
 
-proc mlaser
-mov bp,sp
-ret 4
-endp mlaser
+ret
+endp lvl2
+
 
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -557,15 +768,18 @@ assume es:bufferseg  ;bind es to bufferseg
 mov ax,13h    
 int 10h              ;switch to mode 13h
 
-call lvl1            ;generate level 1
+call lvl2            ;generate level 1
 
-calc laser 100 100
-;push [laser]
-;call drawleftplayer
 
 
 @waitforkey:
 call buffertoscreen
+inc [lasert]
+cmp [lasert],100h
+jne @waitforkey2
+call mlaser
+mov [lasert],0
+@waitforkey2:
 mov ah,1            
 int 16h             ;Check if there's input in the buffer
 jz @waitforkey
@@ -583,7 +797,7 @@ cmp ah,1eh
 je @apressed
 cmp ah,20h
 je @dpressed
-cmp ah,0B9h
+cmp ah,39h
 je @interact
 
 cmp ah,1h           
@@ -615,11 +829,8 @@ jmp @collisioncheck
 jmp exit           ;checkpoint for exit
 
 @interact:
-mov di,[pcor]
-inc di
-cmp [byte ptr es:di],06h
-je @lever
-@lever:
+call reset
+jmp @waitforkey
 
 
 
@@ -635,7 +846,7 @@ inc di
 dec cl
 jnz @topck
 mov cl,6
-add di,2874
+add di,2554
 dec ch
 jnz @topck
 mov di,[pcor]
@@ -648,7 +859,7 @@ add di,320
 dec cl
 jnz @sideck
 mov cl,9
-sub di,2874
+sub di,2875
 dec ch
 jnz @sideck
 jmp @moveplayer
@@ -687,15 +898,23 @@ jmp @collisioncheck
 
 
 @collisionfound:
+cmp [byte ptr es:di],30h
+je @goalreached
 cmp [byte ptr es:di],9
 jne @stopmovement
 dec [health]
 jz exit
-life
+call lives
 @stopmovement:
 mov ax,[pcorbackup]
 mov [pcor],ax
 jmp @moveplayer
+
+@goalreached:
+mov [byte ptr laser],0
+call clearscreen
+call lvl1
+jmp @waitforkey
 
 
 
