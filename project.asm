@@ -3,15 +3,17 @@ MODEL compact
 STACK 100h
 DATASEG
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+currentlvl dw 2
+seed dw ?
 wall dw ?
 pcor dw  ?  ; coordinates for player
 pcorbackup dw ? ; Backup of pcor
 maxhealth dw 20  ;the max amount of health the player can have
 health dw 20     ;how much health the player has now
-pdir dw 2       ;the direction of the player
-dtimer dw 0
+pdir dw 2       ; 0 is left, 1 is up, 2 is right, 3 is down
 lasert dw 0
 laser db 50 dup(0)
+enemy db 50 dup(0)
 FARDATA bufferseg ;the buffer
 buffer db 64000 dup(12h)
 
@@ -45,16 +47,24 @@ endm pixel
 
 macro calc p1,p2,p3
 push ax
-push cx
 push bx
 push offset p1
 push p2
 push p3
 call coordinatecalc
 pop bx
-pop cx
 pop ax
 endm calc
+
+macro rcalc p1,p2
+push ax
+push bx
+push offset p1
+push p2
+call revcoordinatecalc
+pop bx
+pop ax
+endm rcalc
 
 macro player p1
 push ax
@@ -107,6 +117,16 @@ pop cx
 pop bx
 pop ax
 endm verline
+
+macro hashp p1
+push ax
+push bx
+push p1
+call hash
+pop bx
+pop ax
+endm hashp
+
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CODESEG
@@ -141,10 +161,32 @@ endp clearscreen
 
 proc reset
 call clearscreen
-call lvl2
 call buffertoscreen
 ret
 endp reset
+
+proc coordinatecalc
+mov bp,sp
+mov ax,[bp+4]        ;ax = y coordinate
+mov dx,320           
+mul dx               ;dx:ax = y * 320
+mov bx,[bp+2]        ;di = x coordinate
+add ax,bx            ;di = y * 320 + x
+mov bx,[bp+6]
+mov [bx],ax          ;Set the variable at [bx] to di
+ret 6
+endp coordinatecalc
+
+proc revcoordinatecalc
+mov bp,sp
+mov bl,[bp+2]
+mov ax,320
+div bl
+mov bx,[bp+4]
+mov [bx],ah
+mov [bx+2],al
+ret 4
+endp revcoordinatecalc
 
 ;draw a rectangle using the coordinate as the top left pixel - currently broken
 proc drawrect
@@ -214,17 +256,6 @@ jnz @redlives
 ret 
 endp lives
 
-proc coordinatecalc
-mov bp,sp
-mov bx,[bp+6]        ;bx = address for return
-mov ax,[bp+4]        ;ax = y coordinate
-mov dx,320           
-mul dx               ;dx:ax = y * 320
-mov di,[bp+2]        ;di = x coordinate
-add di,ax            ;di = y * 320 + x
-mov [bx],di          ;Set the variable at [bx] to di
-ret 6
-endp coordinatecalc
 
 proc hitdetected
 pixel [pcor] 28h
@@ -235,9 +266,8 @@ proc mlaser
 xor si,si
 mov si,1
 mov ah,[byte ptr laser]
-inc ah
-cmp ah,1
-je @laserend
+cmp ah,0
+je @lend1
 @laserload:
 mov di,[word ptr laser+si]
 mov al,[byte ptr laser+si+2]
@@ -287,6 +317,7 @@ call laserck
 @laserend:
 add si,5
 dec ah
+@lend1:
 jnz @laserload
 ret 
 endp mlaser
@@ -310,6 +341,88 @@ jmp exit
 @lackend:
 ret 2
 endp laserck
+
+; enemy ai
+; [num of enemies , e1 location , e1 dir ,e1 dtimer, e1 dis, e1 state , e1 timer , e1 health  ...]
+;       0               1            3        4          5       6          7           9
+proc enemyai
+
+mov cl,[byte ptr enemy]
+xor si,si
+@enemyincloop:
+inc [word ptr enemy+si+7]
+add si,5
+cmp [word ptr enemy+si+2],17
+dec cl
+jne @enemyincloop
+jz @enemyaiend
+mov [word ptr enemy+si+2],0
+mov dx,[word ptr enemy+1]
+
+
+cmp [byte ptr enemy+si+6],2
+jb @patrol
+jb @pspotted
+ja @eattack
+
+@patrol:
+push si
+push 0
+call epatrol
+pop si
+jmp @enemyaiend1
+@pspotted:
+@eattack:
+
+
+@enemyaiend1:
+mov dx,[word ptr enemy+1]
+pixel dx 4h
+@enemyaiend:
+ret
+endp enemyai
+
+proc epatrol
+mov bp,sp
+mov si,[bp+2]
+mov cl,[byte ptr enemy+si+4]
+mov ch,[byte ptr enemy+si+3]
+cmp cl,cl
+jz @changeedir
+jmp @ewalk
+
+@changeedir:
+mov al,3
+sub al,ch
+mov ch,al
+mov cl,[byte ptr enemy+si+5]
+
+@ewalk:
+cmp ch,2
+jz @eleft
+jb @eup
+je @eright
+ja @edown
+
+@eleft:
+sub [word ptr enemy+1],2
+jmp @endpatrol
+
+@eup:
+sub [word ptr enemy+1],640
+jmp @endpatrol
+
+@eright:
+add [word ptr enemy+1],2
+jmp @endpatrol
+
+@edown:
+add [word ptr enemy+1],640
+jmp @endpatrol
+
+@endpatrol:
+ret 2
+endp epatrol
 
 ; draw the player character, each proc draws the player from a different side
 proc drawfrontplayer
@@ -561,7 +674,7 @@ mov bp,sp
 mov si,[bp+4]
 push [bp+4]
 mov cx,[bp+2] ;cx is the direction of the player
-cmp cx,2  ; 0 is left, 1 is up, 2 is right, 3 is down
+cmp cx,2  
 jcxz @pdirleft
 jg @pdirdown
 je @pdirright
@@ -603,6 +716,23 @@ jnz @clearloop1
 
 ret 4
 endp clearplayer
+
+
+proc hash
+mov bp,sp
+xor ax,ax
+mov bx,[bp+2]
+mov al,bl
+not al
+mul bl
+xor ax,bx
+div bx
+mov bx,35h
+mul bl
+mov [seed],ax
+
+ret 2
+endp hash
 
 proc drawhorline
 mov bp,sp
@@ -666,6 +796,22 @@ jnz frameloop4
 
 ret
 endp drawlvlframe
+
+proc selectlvl
+call clearscreen
+cmp [currentlvl],2
+je @selectlvl2
+jb @selectlvl1
+@selectlvl1:
+call lvl1
+jmp @lvlsend
+@selectlvl2:
+call lvl2
+jmp @lvlsend
+
+@lvlsend:
+ret
+endp selectlvl
 
 proc lvl1
 calc pcor 25 25
@@ -751,7 +897,17 @@ call drawlvlframe
 mov [byte ptr laser],0
 mov [lasert],0
 calc wall 168 22
-horline [wall] 9 10
+;horline [wall] 9 10
+calc wall 100 100
+mov di,[wall]
+;mov [byte ptr es:di],31h
+pixel di 4
+;mov [byte ptr enemy],2
+;mov [word ptr enemy+1],di
+;mov [byte ptr enemy+3],1
+;mov [byte ptr enemy+4],0
+;mov [byte ptr enemy+5],8
+;mov [byte ptr enemy+7],10h
 
 ret
 endp lvl2
@@ -767,8 +923,9 @@ mov es,ax            ;es = segment for buffer
 assume es:bufferseg  ;bind es to bufferseg
 mov ax,13h    
 int 10h              ;switch to mode 13h
+hashp 13
 
-call lvl2            ;generate level 1
+call selectlvl            ;generate level 1
 
 
 
@@ -829,7 +986,7 @@ jmp @collisioncheck
 jmp exit           ;checkpoint for exit
 
 @interact:
-call reset
+call selectlvl
 jmp @waitforkey
 
 
@@ -900,6 +1057,8 @@ jmp @collisioncheck
 @collisionfound:
 cmp [byte ptr es:di],30h
 je @goalreached
+cmp [byte ptr es:di],31h
+je @heal
 cmp [byte ptr es:di],9
 jne @stopmovement
 dec [health]
@@ -910,10 +1069,20 @@ mov ax,[pcorbackup]
 mov [pcor],ax
 jmp @moveplayer
 
+@heal:
+mov ax,[maxhealth]
+cmp [health],ax
+jge @stopmovement
+inc [health]
+mov [byte ptr es:di],12h
+call lives
+jmp @stopmovement
+
 @goalreached:
 mov [byte ptr laser],0
 call clearscreen
-call lvl1
+inc [currentlvl]
+call selectlvl
 jmp @waitforkey
 
 

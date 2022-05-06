@@ -10,16 +10,15 @@
 !_TAG_PROGRAM_URL	https://ctags.io/	/official site/
 !_TAG_PROGRAM_VERSION	5.9.0	//
 
-
+currentlvl	project.asm	/^currentlvl dw 2$/;"	l
 wall	project.asm	/^wall dw ?$/;"	l
 pcor	project.asm	/^pcor dw  ?  ; coordinates for player$/;"	l
 pcorbackup	project.asm	/^pcorbackup dw ? ; Backup of pcor$/;"	l
-laser	project.asm	/^laser dw ?$/;"	l
+lasert	project.asm	/^lasert dw 0$/;"	l
 maxhealth	project.asm	/^maxhealth dw 3$/;"	l
 health	project.asm	/^health dw 3$/;"	l
-pcolor	project.asm	/^pcolor dw 4$/;"	l
 pdir	project.asm	/^pdir dw ?$/;"	l
-dtimer	project.asm	/^dtimer dw 0$/;"	l
+laser	project.asm	/^laser db 50 dup(0)$/;"	l 
 
 callpixel	project.asm	/^macro callpixel p1,p2$/;"	l
 callrect	project.asm	/^macro callrect p1,p2$/;"	l
@@ -28,9 +27,11 @@ calc	project.asm	/^macro calc p1,p2,p3$/;"	l
 life	project.asm	/^macro life$/;"	v
 buffer	project.asm	/^buffer db 64000 dup(12h)$/;"	l
 bufferseg	project.asm	/^FARDATA bufferseg ;the buffer$/;"	l
+horline	project.asm	/^macro horline p1,p2,p3$/;"	l 
+verline	project.asm	/^$macro verline p1,p2,p3/;"	l 
 
-pixeltobuffer	project.asm	/^proc pixeltobuffer   ;First push y second x third color$/;"	l
 buffertoscreen	project.asm	/^proc buffertoscreen$/;"	l
+clearscreen	project.asm	/^proc clearscreen$/;"	l 
 drawrect	project.asm	/^proc drawrect$/;"	l
 rect2x2	project.asm	/^proc rect2x2$/;"	l
 lives	project.asm	/^proc lives$/;"	l
@@ -38,7 +39,13 @@ coordinatecalc	project.asm	/^proc coordinatecalc$/;"	l
 hitdetected	project.asm	/^proc hitdetected$/;"	l
 direction	project.asm	/^proc direction$/;"	l
 lvl1	project.asm	/^proc lvl1$/;"	l
+lvl2	project.asm	/^proc lvl2$/;"	l
 mlaser	project.asm	/^proc mlaser$/;"	l
+laserck	project.asm	/^proc laserck$/;"	l
+drawhorline	project.asm	/^proc drawhorline$/;"	l
+drawverline	project.asm	/^proc drawverline$/;"	l
+drawlvlframe	project.asm	/^proc drawlvlframe$/;"	l
+selectlvl	project.asm	/^proc selectlvl$/;"	l
 
 drawleftplayer	project.asm	/^proc drawleftplayer$/;"	l 
 drawrightplayer	project.asm	/^proc drawrightplayer$/;"	l 
