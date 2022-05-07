@@ -3,7 +3,7 @@ MODEL compact
 STACK 100h
 DATASEG
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-currentlvl dw 2
+currentlvl db ?
 seed dw ?
 wall dw ?
 pcor dw  ?  ; coordinates for player
@@ -11,10 +11,12 @@ pcorbackup dw ? ; Backup of pcor
 maxhealth dw 20  ;the max amount of health the player can have
 health dw 20     ;how much health the player has now
 pdir dw 2       ; 0 is left, 1 is up, 2 is right, 3 is down
+mainmsg db 'choose a level: ','$'
+mainin db ?
 lasert dw 0
 laser db 50 dup(0)
-enemy db 1000 dup(0)
-enemyt db 1000 dup(0)
+enemy db 100 dup(0)
+enemyt db 100 dup(0)
 FARDATA bufferseg ;the buffer
 buffer db 64000 dup(12h)
 
@@ -134,6 +136,30 @@ endm hashp
 
 CODESEG
 ;            procedures
+
+proc mainmenu
+mov al,03h
+mov ah,0
+int 10h
+lea dx,[mainmsg]
+mov ah,9h
+int 21h
+mov ah,01h
+int 21h
+sub al,'0'
+mov [currentlvl],al
+ret
+endp mainmenu
+
+proc endprogram
+mov al,03h
+mov ah,0
+int 10h
+mov ax, 4c00h
+int 21h
+ret
+endp endprogram
+
 
 ;Copy everything in the buffer to display memory
 proc buffertoscreen    
@@ -347,20 +373,20 @@ endp laserck
 
 ; enemy ai
 ; [num of enemies , e1 location , e1 dir ,e1 dtimer, e1 dis, e1 state , e1 health  ...]
-;       0               1            17        25        33        41          49       
+;       0               1            3        4        5        6          7       
 proc enemyai
 xor si,si
 xor di,di
-sub si,16
-sub di,49
+sub si,2
+sub di,8
 xor cx,cx
 mov ch,[enemy]
 @enemytimer:
 cmp ch,0
 je @aiend
 dec ch
-add si,16
-add di,49
+add si,2
+add di,8
 inc [word ptr enemyt+si]
 cmp [word ptr enemyt+si],100h
 jne @enemytimer
@@ -368,7 +394,7 @@ mov [word ptr enemyt+si],0
 
 call epatrol
 mov ax,di
-mov di,[word ptr enemy+di+8]
+mov di,[word ptr enemy+di+1]
 mov [byte ptr es:di],4h
 mov di,ax
 
@@ -379,22 +405,22 @@ ret
 endp enemyai
 
 proc epatrol
-cmp [byte ptr enemy+di+40],0
+cmp [byte ptr enemy+di+4],0
 je @changeedir
 jmp @ewalk
 
 @changeedir:
 mov al,3
-sub al,[byte ptr enemy+di+32]
-mov [byte ptr enemy+di+32],al
-mov cl,[byte ptr enemy+di+48]
-mov [byte ptr enemy+di+40],cl
+sub al,[byte ptr enemy+di+3]
+mov [byte ptr enemy+di+3],al
+mov cl,[byte ptr enemy+di+5]
+mov [byte ptr enemy+di+4],cl
 
 @ewalk:
-dec [byte ptr enemy+di+40]
+dec [byte ptr enemy+di+4]
 push cx
 xor cx,cx
-mov cl,[byte ptr enemy+di+32]
+mov cl,[byte ptr enemy+di+3]
 cmp cx,2
 jcxz @eleft
 jb @eup
@@ -402,19 +428,19 @@ ja @eright
 je @edown
 
 @eleft:
-sub [word ptr enemy+di+8],2
+sub [word ptr enemy+di+1],2
 jmp @endpatrol
 
 @eup:
-sub [word ptr enemy+di+8],640
+sub [word ptr enemy+di+1],640
 jmp @endpatrol
 
 @eright:
-add [word ptr enemy+di+8],2
+add [word ptr enemy+di+1],2
 jmp @endpatrol
 
 @edown:
-add [word ptr enemy+di+8],640
+add [word ptr enemy+di+1],640
 jmp @endpatrol
 
 @endpatrol:
@@ -800,6 +826,9 @@ call clearscreen
 cmp [currentlvl],2
 je @selectlvl2
 jb @selectlvl1
+cmp [currentlvl],235
+jne @lvlsend
+call endprogram
 @selectlvl1:
 call lvl1
 jmp @lvlsend
@@ -903,13 +932,12 @@ calc wall 168 22
 ;horline [wall] 9 10
 calc wall 100 100
 mov di,[wall]
-;mov [byte ptr es:di],31h
 mov [byte ptr enemy],1
-mov [word ptr enemy+8],di
-mov [byte ptr enemy+32],1
-mov [byte ptr enemy+40],8
-mov [byte ptr enemy+48],8
-;mov [byte ptr enemy+7],10h
+mov [word ptr enemy+1],di
+mov [byte ptr enemy+4],1
+mov [byte ptr enemy+3],3
+mov [byte ptr enemy+5],8
+mov [byte ptr enemy+6],8
 
 ret
 endp lvl2
@@ -923,12 +951,12 @@ mov ds, ax           ;ds = segment for data
 mov ax,bufferseg 
 mov es,ax            ;es = segment for buffer
 assume es:bufferseg  ;bind es to bufferseg
+
+call mainmenu
 mov ax,13h    
 int 10h              ;switch to mode 13h
 
 call selectlvl            ;generate level 1
-
-
 
 @waitforkey:
 call buffertoscreen
@@ -985,7 +1013,7 @@ mov [pdir],0
 jmp @collisioncheck
 
 @exitcp:
-jmp exit           ;checkpoint for exit
+call mainmenu
 
 @interact:
 call selectlvl
