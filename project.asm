@@ -13,7 +13,8 @@ health dw 20     ;how much health the player has now
 pdir dw 2       ; 0 is left, 1 is up, 2 is right, 3 is down
 lasert dw 0
 laser db 50 dup(0)
-enemy db 50 dup(0)
+enemy db 1000 dup(0)
+enemyt db 1000 dup(0)
 FARDATA bufferseg ;the buffer
 buffer db 64000 dup(12h)
 
@@ -47,12 +48,14 @@ endm pixel
 
 macro calc p1,p2,p3
 push ax
+push cx
 push bx
 push offset p1
 push p2
 push p3
 call coordinatecalc
 pop bx
+pop cx
 pop ax
 endm calc
 
@@ -167,13 +170,13 @@ endp reset
 
 proc coordinatecalc
 mov bp,sp
+mov bx,[bp+6]        ;bx = address for return
 mov ax,[bp+4]        ;ax = y coordinate
 mov dx,320           
 mul dx               ;dx:ax = y * 320
-mov bx,[bp+2]        ;di = x coordinate
-add ax,bx            ;di = y * 320 + x
-mov bx,[bp+6]
-mov [bx],ax          ;Set the variable at [bx] to di
+mov di,[bp+2]        ;di = x coordinate
+add di,ax            ;di = y * 320 + x
+mov [bx],di          ;Set the variable at [bx] to di
 ret 6
 endp coordinatecalc
 
@@ -343,85 +346,80 @@ ret 2
 endp laserck
 
 ; enemy ai
-; [num of enemies , e1 location , e1 dir ,e1 dtimer, e1 dis, e1 state , e1 timer , e1 health  ...]
-;       0               1            3        4          5       6          7           9
+; [num of enemies , e1 location , e1 dir ,e1 dtimer, e1 dis, e1 state , e1 health  ...]
+;       0               1            17        25        33        41          49       
 proc enemyai
-
-mov cl,[byte ptr enemy]
 xor si,si
-@enemyincloop:
-inc [word ptr enemy+si+7]
-add si,5
-cmp [word ptr enemy+si+2],17
-dec cl
-jne @enemyincloop
-jz @enemyaiend
-mov [word ptr enemy+si+2],0
-mov dx,[word ptr enemy+1]
+xor di,di
+sub si,16
+sub di,49
+xor cx,cx
+mov ch,[enemy]
+@enemytimer:
+cmp ch,0
+je @aiend
+dec ch
+add si,16
+add di,49
+inc [word ptr enemyt+si]
+cmp [word ptr enemyt+si],100h
+jne @enemytimer
+mov [word ptr enemyt+si],0
 
-
-cmp [byte ptr enemy+si+6],2
-jb @patrol
-jb @pspotted
-ja @eattack
-
-@patrol:
-push si
-push 0
 call epatrol
-pop si
-jmp @enemyaiend1
-@pspotted:
-@eattack:
+mov ax,di
+mov di,[word ptr enemy+di+8]
+mov [byte ptr es:di],4h
+mov di,ax
 
-
-@enemyaiend1:
-mov dx,[word ptr enemy+1]
-pixel dx 4h
-@enemyaiend:
+@aisemiend:
+jmp @enemytimer
+@aiend:
 ret
 endp enemyai
 
 proc epatrol
-mov bp,sp
-mov si,[bp+2]
-mov cl,[byte ptr enemy+si+4]
-mov ch,[byte ptr enemy+si+3]
-cmp cl,cl
-jz @changeedir
+cmp [byte ptr enemy+di+40],0
+je @changeedir
 jmp @ewalk
 
 @changeedir:
 mov al,3
-sub al,ch
-mov ch,al
-mov cl,[byte ptr enemy+si+5]
+sub al,[byte ptr enemy+di+32]
+mov [byte ptr enemy+di+32],al
+mov cl,[byte ptr enemy+di+48]
+mov [byte ptr enemy+di+40],cl
 
 @ewalk:
-cmp ch,2
-jz @eleft
+dec [byte ptr enemy+di+40]
+push cx
+xor cx,cx
+mov cl,[byte ptr enemy+di+32]
+cmp cx,2
+jcxz @eleft
 jb @eup
-je @eright
-ja @edown
+ja @eright
+je @edown
 
 @eleft:
-sub [word ptr enemy+1],2
+sub [word ptr enemy+di+8],2
 jmp @endpatrol
 
 @eup:
-sub [word ptr enemy+1],640
+sub [word ptr enemy+di+8],640
 jmp @endpatrol
 
 @eright:
-add [word ptr enemy+1],2
+add [word ptr enemy+di+8],2
 jmp @endpatrol
 
 @edown:
-add [word ptr enemy+1],640
+add [word ptr enemy+di+8],640
 jmp @endpatrol
 
 @endpatrol:
-ret 2
+pop cx
+ret 
 endp epatrol
 
 ; draw the player character, each proc draws the player from a different side
@@ -888,6 +886,11 @@ mov [word ptr laser+6],di
 mov [word ptr laser+9],di
 mov [byte ptr laser+8],1
 mov [lasert],0
+mov [byte ptr enemy],1
+mov [word ptr enemy+1],di
+mov [byte ptr enemy+17],1
+mov [byte ptr enemy+25],8
+mov [byte ptr enemy+33],8
 ret 
 endp lvl1
 
@@ -901,12 +904,11 @@ calc wall 168 22
 calc wall 100 100
 mov di,[wall]
 ;mov [byte ptr es:di],31h
-pixel di 4
-;mov [byte ptr enemy],2
-;mov [word ptr enemy+1],di
-;mov [byte ptr enemy+3],1
-;mov [byte ptr enemy+4],0
-;mov [byte ptr enemy+5],8
+mov [byte ptr enemy],1
+mov [word ptr enemy+8],di
+mov [byte ptr enemy+32],1
+mov [byte ptr enemy+40],8
+mov [byte ptr enemy+48],8
 ;mov [byte ptr enemy+7],10h
 
 ret
@@ -923,7 +925,6 @@ mov es,ax            ;es = segment for buffer
 assume es:bufferseg  ;bind es to bufferseg
 mov ax,13h    
 int 10h              ;switch to mode 13h
-hashp 13
 
 call selectlvl            ;generate level 1
 
@@ -932,6 +933,7 @@ call selectlvl            ;generate level 1
 @waitforkey:
 call buffertoscreen
 inc [lasert]
+call enemyai
 cmp [lasert],100h
 jne @waitforkey2
 call mlaser
