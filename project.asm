@@ -8,6 +8,7 @@ seed dw ?
 wall dw ?
 pcor dw  ?  ; coordinates for player
 pcorbackup dw ? ; Backup of pcor
+upcor db ?,?
 maxhealth dw 20  ;the max amount of health the player can have
 health dw 20     ;how much health the player has now
 pdir dw 2       ; 0 is left, 1 is up, 2 is right, 3 is down
@@ -15,6 +16,7 @@ mainmsg db 'choose a level: ','$'
 mainin db ?
 lasert dw 0
 laser db 50 dup(0)
+uenemy db ?,?
 enemy db 100 dup(0)
 enemyt db 100 dup(0)
 FARDATA bufferseg ;the buffer
@@ -377,9 +379,9 @@ endp laserck
 proc enemyai
 xor si,si
 xor di,di
+xor cx,cx
 sub si,2
 sub di,8
-xor cx,cx
 mov ch,[enemy]
 @enemytimer:
 cmp ch,0
@@ -443,10 +445,38 @@ jmp @endpatrol
 add [word ptr enemy+di+1],640
 jmp @endpatrol
 
+
 @endpatrol:
 pop cx
 ret 
 endp epatrol
+
+proc searchforplayer
+rcalc upcor [pcor]
+rcalc uenemy word ptr enemy+di+1
+mov ax,[word ptr uenemy]
+cmp [word ptr upcor],ax
+je @xspotted
+mov ax,[word ptr uenemy+2]
+cmp [word ptr upcor+2],ax
+je @yspotted
+jmp @endpatrol
+
+@xspotted:
+mov ax,[word ptr uenemy+2]
+cmp ax,[word ptr upcor+2]
+jg @ygreater
+@ygreater:
+sub ax,[word ptr upcor+2]
+cmp ax,10
+jg @endsearch
+mov [byte ptr enemy+di+3],3
+
+
+
+@endsearch:
+ret
+endp searchforplayer
 
 ; draw the player character, each proc draws the player from a different side
 proc drawfrontplayer
