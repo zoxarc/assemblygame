@@ -3,7 +3,7 @@ MODEL compact
 STACK 100h
 DATASEG
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-currentlvl db ?
+currentlvl db 2
 seed dw ?
 wall dw ?
 pcor dw  ?  ; coordinates for player
@@ -459,7 +459,7 @@ cmp [word ptr upcor],ax
 je @xspotted
 mov ax,[word ptr uenemy+2]
 cmp [word ptr upcor+2],ax
-je @yspotted
+;je @yspotted
 jmp @endpatrol
 
 @xspotted:
@@ -775,6 +775,7 @@ endp clearplayer
 proc hash
 mov bp,sp
 xor ax,ax
+xor dx,dx
 mov bx,[bp+2]
 mov al,bl
 not al
@@ -790,10 +791,10 @@ endp hash
 
 proc drawhorline
 mov bp,sp
-mov ax,[bp+6]
+mov ax,[bp+6] ;ax coordinate
 xor bx,bx
-mov bl,[bp+4]
-mov cl,[bp+2]
+mov bl,[bp+4] ;bl color
+mov cl,[bp+2] ;cl length
 @horloop:
 pixel ax bx
 add ax,2
@@ -805,10 +806,10 @@ endp drawhorline
 
 proc drawverline
 mov bp,sp
-mov ax,[bp+6]
+mov ax,[bp+6] ;ax coor
 xor bx,bx
-mov bl,[bp+4]
-mov cl,[bp+2]
+mov bl,[bp+4] ;bl color
+mov cl,[bp+2] ;cl length
 @verloop:
 pixel ax bx
 add ax,640
@@ -821,14 +822,15 @@ endp drawverline
 ;180 20 , 20 20
 proc drawlvlframe
 call lives
-player [pcor]
+;player [pcor]
 calc wall 20 20
-mov cx,280
-frameloop1:
-pixel [wall] 15
-inc [wall]
-dec cx
-jnz frameloop1 
+;mov cx,280
+;frameloop1:
+;pixel [wall] 15
+;inc [wall]
+;dec cx
+;jnz frameloop1 
+verline [wall] 15 169
 mov cx,160
 frameloop2:
 pixel [wall] 15
@@ -841,7 +843,7 @@ pixel [wall] 15
 dec [wall]
 dec cx
 jnz frameloop3
-mov cx,160
+mov cx,161
 frameloop4:
 pixel [wall] 15
 sub [wall],320
@@ -961,16 +963,70 @@ mov [lasert],0
 calc wall 168 22
 ;horline [wall] 9 10
 calc wall 100 100
-mov di,[wall]
-mov [byte ptr enemy],1
-mov [word ptr enemy+1],di
-mov [byte ptr enemy+4],1
-mov [byte ptr enemy+3],3
-mov [byte ptr enemy+5],8
-mov [byte ptr enemy+6],8
+;mov di,[wall]
+;mov [byte ptr enemy],1
+;mov [word ptr enemy+1],di
+;mov [byte ptr enemy+4],1
+;mov [byte ptr enemy+3],3
+;mov [byte ptr enemy+5],8
+;mov [byte ptr enemy+6],8
 
 ret
 endp lvl2
+
+proc drawshape
+push ax
+mov di,[bp+2]
+calc wall 22 22
+mov di,[wall]
+mov [byte ptr es:di],4
+calc wall 179 299
+mov di,[wall]
+mov [byte ptr es:di],4
+calc wall 179 22
+mov di,[wall]
+mov [byte ptr es:di],4
+calc wall 22 299
+mov di,[wall]
+mov [byte ptr es:di],4
+
+verline ax 23h 10
+pop ax
+ret 2
+endp drawshape
+
+proc drawshape2
+calc wall 120 120
+horline [wall] 15 10
+ret 
+endp drawshape2
+
+proc proceaduralgen
+xor ax,ax
+xor bx,bx
+mov ax,[bp+2]
+mov bl,10
+div bl
+cmp ah,0Fh
+jg @hor
+@hor:
+jmp cshape1
+
+
+cshape1:
+push 7062 
+call drawshape
+cshape2:
+call drawshape2
+cshape3:
+
+precurse:
+xor ah,ah
+push ax
+pop ax
+proceadueralend:
+ret 2
+endp proceaduralgen
 
 
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -982,11 +1038,16 @@ mov ax,bufferseg
 mov es,ax            ;es = segment for buffer
 assume es:bufferseg  ;bind es to bufferseg
 
-call mainmenu
+;call mainmenu
 mov ax,13h    
 int 10h              ;switch to mode 13h
 
+
 call selectlvl            ;generate level 1
+
+hashp 1
+push [seed]
+call proceaduralgen
 
 @waitforkey:
 call buffertoscreen
@@ -1043,7 +1104,7 @@ mov [pdir],0
 jmp @collisioncheck
 
 @exitcp:
-call mainmenu
+call endprogram
 
 @interact:
 call selectlvl
