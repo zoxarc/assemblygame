@@ -42,9 +42,11 @@ macro pixel p1,p2
 push ax
 push cx
 push bx
+push di
 push p1
 push p2
 call rect2x2
+pop di
 pop bx
 pop cx
 pop ax
@@ -137,6 +139,16 @@ call hash
 pop bx
 pop ax
 endm hashp
+
+macro setlaser p1,p2
+push si
+push ax
+push p1
+push p2
+call setlaserproc
+pop ax
+pop si
+endm setlaser
 
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -298,27 +310,32 @@ ret
 endp hitdetected
 
 proc mlaser
+push si
+push cx
 xor si,si
+xor cx,cx
 mov si,1
 mov ah,[byte ptr laser]
 cmp ah,0
-je @lend1
+je @_lend
 @laserload:
 mov di,[word ptr laser+si]
-mov al,[byte ptr laser+si+2]
-cmp al,1
+mov cl,[byte ptr laser+si+2]
+cmp cx,2
+jcxz @lcxz
 je @laserup
-jz @laserside
-@laserside:
+jb @laserright
+ja @laserleft
+@laserright:
 dec di
 mov [byte ptr es:di],12h
 add di,2
 cmp [byte ptr es:di],12h
-je @sidecontinue
+je @rightcontinue
 push di
 dec di
-jne @laserhit
-@sidecontinue:
+jne @laserhitjump
+@rightcontinue:
 mov [byte ptr es:di],36h
 mov [word ptr laser+si],di
 mov di,[word ptr laser+si+3]
@@ -326,16 +343,62 @@ mov [byte ptr es:di-1],15
 mov [byte ptr es:di],15
 jmp @laserend
 
+@laserleft:
+inc di
+mov [byte ptr es:di],12h
+sub di,2
+cmp [byte ptr es:di],12h
+je @leftcontinue
+push di
+inc di
+jne @laserhitjump
+@leftcontinue:
+mov [byte ptr es:di],36h
+mov [word ptr laser+si],di
+mov di,[word ptr laser+si+3]
+mov [byte ptr es:di+1],15
+mov [byte ptr es:di],15
+jmp @laserend
+
+@laserhitjump:
+jmp @laserhit
+
+@_lend:
+jmp @lend1
+
+@_laserload:
+jmp @laserload
+
+@lcxz:
+jmp @laserdown
+
 @laserup:
+add di,320
+mov [byte ptr es:di],12h
+sub di,640
+cmp [byte ptr es:di],12h
+je @upcontinue
+push di
+add di,320
+jne @laserhitjump
+@upcontinue:
+mov [byte ptr es:di],36h
+mov [word ptr laser+si],di
+mov di,[word ptr laser+si+3]
+mov [byte ptr es:di+320],15
+mov [byte ptr es:di],15
+jmp @laserend
+
+@laserdown:
 sub di,320
 mov [byte ptr es:di],12h
 add di,640
 cmp [byte ptr es:di],12h
-je @upcontinue
+je @downcontinue
 push di
 sub di,320
 jne @laserhit
-@upcontinue:
+@downcontinue:
 mov [byte ptr es:di],36h
 mov [word ptr laser+si],di
 mov di,[word ptr laser+si+3]
@@ -353,7 +416,9 @@ call laserck
 add si,5
 dec ah
 @lend1:
-jnz @laserload
+jnz @_laserload
+pop cx
+pop si
 ret 
 endp mlaser
 
@@ -361,6 +426,12 @@ proc laserck
 mov bp,sp
 mov di,[bp+2]
 cmp [byte ptr es:di],15
+je @lackend
+cmp [byte ptr es:di],9
+je @lackend
+cmp [byte ptr es:di],36h
+je @lackend
+cmp [byte ptr es:di],4
 je @lackend
 
 dec [health]
@@ -376,6 +447,94 @@ jmp exit
 @lackend:
 ret 2
 endp laserck
+
+proc setlaserproc
+mov bp,sp
+xor ax,ax
+mov ax,5
+mul [byte ptr laser]
+mov si,ax
+mov ax,[bp+4]
+mov [word ptr laser+1+si],ax
+mov [word ptr laser+4+si],ax
+mov al,[bp+2]
+mov [byte ptr laser+si+3],al
+inc [byte ptr laser]
+ret 4
+endp setlaserproc
+
+proc claser0
+mov bp,sp
+push di
+mov di,[bp+2]
+@lgen0:
+pixel di 9
+add di,2
+cmp [byte ptr es:di+1],12h
+je @lgen0
+cmp [byte ptr es:di],12h
+jne @clasere0
+dec di
+pixel di 9
+@clasere0:
+pop di
+ret 2
+endp claser0
+
+proc claser1
+mov bp,sp
+push di
+mov di,[bp+2]
+@lgen1:
+pixel di 9
+sub di,640
+cmp [byte ptr es:di],12h
+je @lgen1
+cmp [byte ptr es:di+320],12h
+jne @clasere1
+add di,320
+pixel di 9
+@clasere1:
+pop di
+ret 2
+endp claser1
+
+proc claser2
+mov bp,sp
+push di
+mov di,[bp+2]
+@lgen2:
+pixel di 9
+add di,640
+cmp [byte ptr es:di],12h
+je @lgen2
+cmp [byte ptr es:di-320],12h
+jne @clasere2
+sub di,320
+pixel di 9
+@clasere2:
+pop di
+ret 2
+endp claser2
+
+proc claser3
+mov bp,sp
+push di
+mov di,[bp+2]
+@lgen3:
+pixel di 9
+sub di,2
+cmp [byte ptr es:di],12h
+je @lgen3
+cmp [byte ptr es:di+1],12h
+jne @clasere3
+inc di
+pixel di 9
+@clasere3:
+pop di
+ret 2
+endp claser3
+
 
 ; enemy ai
 ; [num of enemies , e1 location , e1 dir ,e1 dtimer, e1 dis, e1 state , e1 health  ...]
@@ -398,11 +557,16 @@ cmp [word ptr enemyt+si],100h
 jne @enemytimer
 mov [word ptr enemyt+si],0
 
+cmp [word ptr enemy+si+6],0
+jne @enemypursuit
 call epatrol
 mov ax,di
 mov di,[word ptr enemy+di+1]
 mov [byte ptr es:di],4h
 mov di,ax
+
+@enemypursuit:
+;call pursuit
 
 @aisemiend:
 jmp @enemytimer
@@ -474,7 +638,12 @@ jg @ygreater
 sub ax,[word ptr upcor+2]
 cmp ax,10
 jg @endsearch
+;jb @ycg
 mov [byte ptr enemy+di+3],3
+
+@pright:
+;mov [byte ptr enemy 
+
 
 
 
@@ -788,6 +957,7 @@ xor ax,bx
 div bx
 mov bx,35h
 mul bl
+xor ax,bx
 mov [seed],ax
 
 ret 2
@@ -829,51 +999,16 @@ endp drawverline
 ;180 20 , 20 20
 proc drawlvlframe
 call lives
-;player [pcor]
-;mov cx,280
-;frameloop1:
-;pixel [wall] 15
-;inc [wall]
-;dec cx
-;jnz frameloop1 
 calc wall 20 20
 horline [wall] 15 141
-verline [wall] 15 81
+verline [wall] 15 82
 calc wall 20 302
-verline [wall] 15 81
-calc wall 180 20
+verline [wall] 15 82
+calc wall 182 20
 horline [wall] 15 142
 
-;calc wall 20 160
-;verline [wall] 15 80
-;calc wall 100 20
-;horline [wall] 15 140
 ret
 endp drawlvlframe
-
-proc drawsquare
-mov bp,sp
-mov di,[bp+4]
-mov cx,[bp+2]
-@horsquare1:
-mov [byte ptr es:di],25h
-sub di,640
-dec cx
-jnz @horsquare1
-mov cx,[bp+2]
-@versquare1:
-mov [byte ptr es:di],25h
-add di,2
-dec cx
-jnz @versquare1
-
-
-@horsquare2:
-
-
-
-ret 4
-endp drawsquare
 
 proc selectlvl
 call clearscreen
@@ -999,36 +1134,94 @@ endp lvl2
 proc drawshape
 mov bp,sp
 mov di,[bp+2]
-add di,5122
-horline di 31h 35
+horline di 15 35
 sub di,12160
-horline di 21h 35
-;calc wall 22 22
-;mov di,[wall]
-;mov [byte ptr es:di],4
-;calc wall 179 299
-;mov di,[wall]
-;mov [byte ptr es:di],4
-;calc wall 179 22
-;mov di,[wall]
-;mov [byte ptr es:di],4
-;calc wall 22 299
-;mov di,[wall]
-;mov [byte ptr es:di],4
-
-verline di 43h 20
+horline di 15 35
+verline di 15 20
 
 add di,68
 
-verline di 23h 20
+verline di 15 20
 ret 2
 endp drawshape
 
+
 proc drawshape2
-calc wall 120 120
-horline [wall] 15 10
-ret 
+mov bp,sp
+mov di,[bp+2]
+sub di,3175
+horline di 15 8
+setlaser di 2
+
+add di,4
+setlaser di 2
+add di,4
+setlaser di 2
+add di,4
+setlaser di 2
+add di,4
+setlaser di 2
+
+ret 2
 endp drawshape2
+
+proc drawshape3
+mov bp,sp
+mov di,[bp+2]
+sub di,636
+pixel di 15
+add di,60
+pixel di 15
+sub di,58
+
+push di
+sub di,8962
+horline di 9 30
+pixel di 15
+add di,60
+pixel di 15
+pop di
+
+push di
+call claser0
+sub di,3832
+pixel di 15
+sub di,640
+push di
+call claser1
+add di,660
+pixel di 15
+sub di,640
+push di
+call claser1
+add di,660
+pixel di 15
+sub di,640
+push di
+call claser1
+ret 2
+endp drawshape3
+
+proc drawshape4
+mov bp,sp
+mov di,[bp+2]
+sub di,632
+setlaser di 1
+sub di,2
+setlaser di 3
+sub di,640
+push di
+call claser3
+add di,2
+push di
+call claser0
+ret 2
+endp drawshape4
+
+proc drawshape5
+
+ret 2
+endp drawshape5
 
 proc proceaduralgen
 mov bp,sp
@@ -1042,6 +1235,12 @@ dec cx
 jnz @procegen
 
 sub ax,13080
+push ax
+call drawshape
+sub ax,12800
+push ax
+call drawshape
+sub ax,12800
 push ax
 call drawshape
 
@@ -1065,14 +1264,17 @@ int 10h              ;switch to mode 13h
 
 call selectlvl            ;generate level 1
 
-calc wall 162 20
+calc wall 180 22
 push [wall]
-call proceaduralgen
+;call drawshape
+push [wall]
+;call proceaduralgen
+call drawshape4
 
 @waitforkey:
 call buffertoscreen
 inc [lasert]
-call enemyai
+;call enemyai
 cmp [lasert],100h
 jne @waitforkey2
 call mlaser
