@@ -103,10 +103,12 @@ macro horline p1,p2,p3
 push ax
 push bx
 push cx
+push di
 push p1
 push p2
 push p3
 call drawhorline
+pop di
 pop cx
 pop bx
 pop ax
@@ -116,10 +118,12 @@ macro verline p1,p2,p3
 push ax
 push bx
 push cx
+push di
 push p1
 push p2
 push p3
 call drawverline
+pop di
 pop cx
 pop bx
 pop ax
@@ -791,14 +795,17 @@ endp hash
 
 proc drawhorline
 mov bp,sp
+xor ax,ax
+xor bx,bx
+xor cx,cx
 mov ax,[bp+6] ;ax coordinate
 xor bx,bx
 mov bl,[bp+4] ;bl color
-mov cl,[bp+2] ;cl length
+mov cx,[bp+2] ;cl length
 @horloop:
 pixel ax bx
 add ax,2
-dec cl
+dec cx
 jnz @horloop
 
 ret 6
@@ -809,11 +816,11 @@ mov bp,sp
 mov ax,[bp+6] ;ax coor
 xor bx,bx
 mov bl,[bp+4] ;bl color
-mov cl,[bp+2] ;cl length
+mov cx,[bp+2] ;cl length
 @verloop:
 pixel ax bx
 add ax,640
-dec cl
+dec cx
 jnz @verloop
 
 ret 6
@@ -823,35 +830,50 @@ endp drawverline
 proc drawlvlframe
 call lives
 ;player [pcor]
-calc wall 20 20
 ;mov cx,280
 ;frameloop1:
 ;pixel [wall] 15
 ;inc [wall]
 ;dec cx
 ;jnz frameloop1 
-verline [wall] 15 169
-mov cx,160
-frameloop2:
-pixel [wall] 15
-add [wall],320
-dec cx
-jnz frameloop2
-mov cx,280
-frameloop3:
-pixel [wall] 15
-dec [wall]
-dec cx
-jnz frameloop3
-mov cx,161
-frameloop4:
-pixel [wall] 15
-sub [wall],320
-dec cx
-jnz frameloop4
+calc wall 20 20
+horline [wall] 15 141
+verline [wall] 15 81
+calc wall 20 302
+verline [wall] 15 81
+calc wall 180 20
+horline [wall] 15 142
 
+;calc wall 20 160
+;verline [wall] 15 80
+;calc wall 100 20
+;horline [wall] 15 140
 ret
 endp drawlvlframe
+
+proc drawsquare
+mov bp,sp
+mov di,[bp+4]
+mov cx,[bp+2]
+@horsquare1:
+mov [byte ptr es:di],25h
+sub di,640
+dec cx
+jnz @horsquare1
+mov cx,[bp+2]
+@versquare1:
+mov [byte ptr es:di],25h
+add di,2
+dec cx
+jnz @versquare1
+
+
+@horsquare2:
+
+
+
+ret 4
+endp drawsquare
 
 proc selectlvl
 call clearscreen
@@ -975,23 +997,30 @@ ret
 endp lvl2
 
 proc drawshape
-push ax
+mov bp,sp
 mov di,[bp+2]
-calc wall 22 22
-mov di,[wall]
-mov [byte ptr es:di],4
-calc wall 179 299
-mov di,[wall]
-mov [byte ptr es:di],4
-calc wall 179 22
-mov di,[wall]
-mov [byte ptr es:di],4
-calc wall 22 299
-mov di,[wall]
-mov [byte ptr es:di],4
+add di,5122
+horline di 31h 35
+sub di,12160
+horline di 21h 35
+;calc wall 22 22
+;mov di,[wall]
+;mov [byte ptr es:di],4
+;calc wall 179 299
+;mov di,[wall]
+;mov [byte ptr es:di],4
+;calc wall 179 22
+;mov di,[wall]
+;mov [byte ptr es:di],4
+;calc wall 22 299
+;mov di,[wall]
+;mov [byte ptr es:di],4
 
-verline ax 23h 10
-pop ax
+verline di 43h 20
+
+add di,68
+
+verline di 23h 20
 ret 2
 endp drawshape
 
@@ -1002,29 +1031,20 @@ ret
 endp drawshape2
 
 proc proceaduralgen
-xor ax,ax
-xor bx,bx
+mov bp,sp
 mov ax,[bp+2]
-mov bl,10
-div bl
-cmp ah,0Fh
-jg @hor
-@hor:
-jmp cshape1
-
-
-cshape1:
-push 7062 
-call drawshape
-cshape2:
-call drawshape2
-cshape3:
-
-precurse:
-xor ah,ah
+mov cx,4
+@procegen:
 push ax
-pop ax
-proceadueralend:
+call drawshape
+add ax,70
+dec cx
+jnz @procegen
+
+sub ax,13080
+push ax
+call drawshape
+
 ret 2
 endp proceaduralgen
 
@@ -1045,8 +1065,8 @@ int 10h              ;switch to mode 13h
 
 call selectlvl            ;generate level 1
 
-hashp 1
-push [seed]
+calc wall 162 20
+push [wall]
 call proceaduralgen
 
 @waitforkey:
