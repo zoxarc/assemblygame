@@ -14,8 +14,8 @@ wall dw ?
 pcor dw  ?  ; coordinates for player
 pcorbackup dw ? ; Backup of pcor
 upcor db ?,?
-maxhealth dw 20  ;the max amount of health the player can have
-health dw 20     ;how much health the player has now
+maxhealth dw 40  ;the max amount of health the player can have
+health dw 40     ;how much health the player has now
 pdir dw 2       ; 0 is left, 1 is up, 2 is right, 3 is down
 mainmsg db 'load existing save? (y or n):','$'
 scoremsg db 'your score is:','$'
@@ -1097,7 +1097,16 @@ ret 2
 endp drawshape
 
 proc drawshape1
+mov bp,sp
+mov di,[bp+2]
+add di,640
+horline di 4 45
+sub di,13442
+horline di 4 45
+verline di 4 30
 
+add di,72
+verline di 4 30
 ret 2
 endp drawshape1
 
@@ -1105,7 +1114,9 @@ endp drawshape1
 proc drawshape2
 mov bp,sp
 mov di,[bp+2]
-sub di,9590
+sub di,5420
+pixel di 0Eh
+sub di,4156
 verline di 15 8
 setlaser di 3
 add di,1280
@@ -1117,6 +1128,7 @@ setlaser di 3
 add di,1280
 setlaser di 3
 
+push di
 sub di,5100
 verline di 15 8
 push di
@@ -1135,6 +1147,16 @@ add di,1280
 setlaser di 1
 add di,3822
 horline di 15 8
+pop di
+sub di,319
+horline di 15 3
+add di,5
+setlaser di 1
+add di,320
+setlaser di 1
+sub di,2880
+add di,6
+pixel di 2Bh
 ret 2
 endp drawshape2
 
@@ -1151,6 +1173,16 @@ push di
 sub di,8962
 horline di 9 30
 pixel di 15
+push di
+add di,2560
+pixel di 0Eh
+add di,20
+pixel di 0Eh
+add di,20
+pixel di 0Eh
+add di,20
+pixel di 0Eh
+pop di
 add di,60
 pixel di 15
 pop di
@@ -1527,10 +1559,14 @@ int 10h              ;switch to mode 13h
 ;call mainmenu            ;generate level 1
 
 ;call selectlvl
+calc pcor 110 110
 call drawlvlframe
-calc wall 180 22
+calc wall 120 100
 push [wall]
-call drawshape7
+call drawshape1
+calc wall 120 100
+push [wall]
+call drawshape4
 
 
 @waitforkey:
@@ -1665,6 +1701,8 @@ cmp [byte ptr es:di],31h
 je @heal
 cmp [byte ptr es:di],0Eh
 je @incscore
+cmp [byte ptr es:di],2Bh
+je @largescore
 cmp [byte ptr es:di],9
 jne @stopmovement
 dec [health]
@@ -1686,6 +1724,10 @@ jmp @stopmovement
 
 @incscore:
 inc [score]
+jmp @moveplayer
+
+@largescore:
+add [score],5
 jmp @moveplayer
 
 @goalreached:
