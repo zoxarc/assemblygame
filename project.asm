@@ -5,6 +5,11 @@ DATASEG
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 currentlvl db 2
 seed dw ?
+oseed dw ?
+sseed db ?
+filename db 'save.txt',0
+filebuffer db 6 dup(?)
+score dw 0
 wall dw ?
 pcor dw  ?  ; coordinates for player
 pcorbackup dw ? ; Backup of pcor
@@ -12,10 +17,14 @@ upcor db ?,?
 maxhealth dw 20  ;the max amount of health the player can have
 health dw 20     ;how much health the player has now
 pdir dw 2       ; 0 is left, 1 is up, 2 is right, 3 is down
-mainmsg db 'choose a level: ','$'
+mainmsg db 'load existing save? (y or n):','$'
+scoremsg db 'your score is:','$'
+endmsg db 'press any key to continue','$'
 mainin db ?
+inttostr db 6 dup(?)
+rinttostr db 6 dup(?)
 lasert dw 0
-laser db 50 dup(0)
+laser db 500 dup(0)
 uenemy db ?,?
 enemy db 100 dup(0)
 enemyt db 100 dup(0)
@@ -150,6 +159,12 @@ pop ax
 pop si
 endm setlaser
 
+macro strint p1
+push offset strtoint
+push p1
+call stringtointeger
+endm strint
+
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CODESEG
@@ -164,8 +179,21 @@ mov ah,9h
 int 21h
 mov ah,01h
 int 21h
-sub al,'0'
-mov [currentlvl],al
+cmp al,'y'
+je @lfile
+jne @nofile
+@lfile:
+call fileload
+cmp [oseed],0
+je @nofile
+call selectlvl
+jmp @mainend
+@nofile:
+call entropy
+call selectlvl
+@mainend:
+mov ax,13h    
+int 10h              ;switch to mode 13h
 ret
 endp mainmenu
 
@@ -173,10 +201,58 @@ proc endprogram
 mov al,03h
 mov ah,0
 int 10h
+call displayscore
 mov ax, 4c00h
 int 21h
 ret
 endp endprogram
+
+proc integertostring
+mov bp,sp
+push ax
+push bx
+push cx
+push di
+push si
+mov ax,[bp+2]
+xor si,si
+xor di,di
+inc si
+mov bl,10
+@divide:
+div bl
+add ah,'0'
+mov [inttostr+si],ah
+xor ah,ah
+inc si
+test al,al
+jnz @divide
+@reverse:
+mov ah,[inttostr+si]
+mov [rinttostr+di],ah
+inc di
+dec si
+jnz @reverse
+mov [rinttostr+di],'$'
+pop si
+pop di
+pop cx
+pop bx
+pop ax
+ret 2
+endp integertostring
+
+proc displayscore
+lea dx,[scoremsg]
+mov ah,9h
+int 21h
+push [score]
+call integertostring
+lea dx,[rinttostr]
+mov ah,09h
+int 21h
+ret
+endp displayscore
 
 
 ;Copy everything in the buffer to display memory
@@ -234,6 +310,67 @@ mov [bx],ah
 mov [bx+2],al
 ret 4
 endp revcoordinatecalc
+
+
+proc filesave
+@filestart:
+lea dx,[filename]
+mov al,1
+mov ah,3Dh
+int 21h
+jc @nofilexits
+jmp @saveinfo
+
+@nofilexits:
+xor cx,cx
+mov cx,7
+mov ah,3Ch
+int 21h
+jmp @filestart
+
+@saveinfo:
+xor dx,dx
+mov bx,ax
+mov cx,4
+mov dx,[oseed]
+mov [word ptr filebuffer],dx
+xor dx,dx
+mov dl,[currentlvl]
+mov [word ptr filebuffer+2],dx
+lea dx,[filebuffer]
+mov ah,40h
+int 21h
+mov ah,3Eh
+int 21h
+ret
+endp filesave
+
+proc fileload
+xor dx,dx
+xor ax,ax
+mov al,0
+lea dx,[filename]
+mov ah,3Dh
+int 21h
+jc @failload
+mov bx,ax
+lea dx,[filebuffer]
+mov cx,4
+mov ah,3Fh
+int 21h
+mov ax,[word ptr filebuffer]
+mov [oseed],ax
+xor ax,ax
+mov ax,[word ptr filebuffer+2]
+mov [currentlvl],al
+mov ah,3Eh
+int 21h
+jmp @endfileload
+@failload:
+mov [oseed],0
+@endfileload:
+ret
+endp fileload
 
 ;draw a rectangle using the coordinate as the top left pixel - currently broken
 proc drawrect
@@ -303,11 +440,6 @@ jnz @redlives
 ret 
 endp lives
 
-
-proc hitdetected
-pixel [pcor] 28h
-ret
-endp hitdetected
 
 proc mlaser
 push si
@@ -424,6 +556,10 @@ endp mlaser
 
 proc laserck
 mov bp,sp
+push si
+push ax
+push cx
+push di
 mov di,[bp+2]
 cmp [byte ptr es:di],15
 je @lackend
@@ -432,6 +568,10 @@ je @lackend
 cmp [byte ptr es:di],36h
 je @lackend
 cmp [byte ptr es:di],4
+je @lackend
+cmp [byte ptr es:di],30h
+je @lackend
+cmp [byte ptr es:di],31h
 je @lackend
 
 dec [health]
@@ -445,6 +585,10 @@ jmp @lackend
 jmp exit
 
 @lackend:
+pop di
+pop cx
+pop ax
+pop si
 ret 2
 endp laserck
 
@@ -534,122 +678,6 @@ pixel di 9
 pop di
 ret 2
 endp claser3
-
-
-; enemy ai
-; [num of enemies , e1 location , e1 dir ,e1 dtimer, e1 dis, e1 state , e1 health  ...]
-;       0               1            3        4        5        6          7       
-proc enemyai
-xor si,si
-xor di,di
-xor cx,cx
-sub si,2
-sub di,8
-mov ch,[enemy]
-@enemytimer:
-cmp ch,0
-je @aiend
-dec ch
-add si,2
-add di,8
-inc [word ptr enemyt+si]
-cmp [word ptr enemyt+si],100h
-jne @enemytimer
-mov [word ptr enemyt+si],0
-
-cmp [word ptr enemy+si+6],0
-jne @enemypursuit
-call epatrol
-mov ax,di
-mov di,[word ptr enemy+di+1]
-mov [byte ptr es:di],4h
-mov di,ax
-
-@enemypursuit:
-;call pursuit
-
-@aisemiend:
-jmp @enemytimer
-@aiend:
-ret
-endp enemyai
-
-proc epatrol
-cmp [byte ptr enemy+di+4],0
-je @changeedir
-jmp @ewalk
-
-@changeedir:
-mov al,3
-sub al,[byte ptr enemy+di+3]
-mov [byte ptr enemy+di+3],al
-mov cl,[byte ptr enemy+di+5]
-mov [byte ptr enemy+di+4],cl
-
-@ewalk:
-dec [byte ptr enemy+di+4]
-push cx
-xor cx,cx
-mov cl,[byte ptr enemy+di+3]
-cmp cx,2
-jcxz @eleft
-jb @eup
-ja @eright
-je @edown
-
-@eleft:
-sub [word ptr enemy+di+1],2
-jmp @endpatrol
-
-@eup:
-sub [word ptr enemy+di+1],640
-jmp @endpatrol
-
-@eright:
-add [word ptr enemy+di+1],2
-jmp @endpatrol
-
-@edown:
-add [word ptr enemy+di+1],640
-jmp @endpatrol
-
-
-@endpatrol:
-pop cx
-ret 
-endp epatrol
-
-proc searchforplayer
-rcalc upcor [pcor]
-rcalc uenemy word ptr enemy+di+1
-mov ax,[word ptr uenemy]
-cmp [word ptr upcor],ax
-je @xspotted
-mov ax,[word ptr uenemy+2]
-cmp [word ptr upcor+2],ax
-;je @yspotted
-jmp @endpatrol
-
-@xspotted:
-mov ax,[word ptr uenemy+2]
-cmp ax,[word ptr upcor+2]
-jg @ygreater
-@ygreater:
-sub ax,[word ptr upcor+2]
-cmp ax,10
-jg @endsearch
-;jb @ycg
-mov [byte ptr enemy+di+3],3
-
-@pright:
-;mov [byte ptr enemy 
-
-
-
-
-@endsearch:
-ret
-endp searchforplayer
 
 ; draw the player character, each proc draws the player from a different side
 proc drawfrontplayer
@@ -947,18 +975,23 @@ endp clearplayer
 
 proc hash
 mov bp,sp
+push ax
+push bx
+push dx
 xor ax,ax
 xor dx,dx
 mov bx,[bp+2]
 mov al,bl
-not al
+mov ah,bh
+add ah,al
+inc ax
+mov bl,7
 mul bl
-xor ax,bx
-div bx
-mov bx,35h
-mul bl
-xor ax,bx
+inc ax
 mov [seed],ax
+pop dx
+pop bx
+pop ax
 
 ret 2
 endp hash
@@ -980,6 +1013,22 @@ jnz @horloop
 
 ret 6
 endp drawhorline
+
+proc entropy
+push ax
+push bx
+push cx
+push dx
+mov ah,2ch
+int 21h
+mov [byte ptr oseed],dl
+mov [byte ptr seed],dl
+pop dx
+pop cx
+pop bx
+pop ax
+ret
+endp entropy
 
 proc drawverline
 mov bp,sp
@@ -1012,124 +1061,26 @@ endp drawlvlframe
 
 proc selectlvl
 call clearscreen
-cmp [currentlvl],2
-je @selectlvl2
-jb @selectlvl1
-cmp [currentlvl],235
-jne @lvlsend
-call endprogram
-@selectlvl1:
-call lvl1
-jmp @lvlsend
-@selectlvl2:
-call lvl2
-jmp @lvlsend
+call drawlvlframe
+mov cl,[byte ptr oseed]
+mov [byte ptr seed],cl
+mov cl,[currentlvl]
+@hashloop:
+push [seed]
+call hash
+dec cl
+jnz @hashloop
+mov [byte ptr laser],0
+mov ch,[byte ptr seed]
+mov [sseed],ch
+mov [health],20
+call lives
+call filesave
+call proceaduralgen
 
-@lvlsend:
 ret
 endp selectlvl
 
-proc lvl1
-calc pcor 25 25
-call drawlvlframe
-calc wall 40 20
-mov cx,30
-@lvl1wall1:
-pixel [wall] 15
-add [wall],2
-dec cx
-jnz @lvl1wall1
-
-calc wall 20 120 
-pixel [wall] 4
-mov cx,60
-@lvl1wall2:
-pixel [wall] 15
-add [wall],640
-dec cx
-jnz @lvl1wall2
-
-calc wall 42 78 
-mov cx,69
-@lvl1wall3:
-pixel [wall] 9
-add [wall],640
-dec cx
-jnz @lvl1wall3
-
-
-calc wall 42 130 
-mov cx,30
-@lvl1wall4:
-pixel [wall] 9
-add [wall],2
-dec cx
-jnz @lvl1wall4
-pixel [wall] 15
-sub [wall],62
-mov cl,4
-@lvl1wall5:
-pixel [wall] 15
-sub [wall],2
-dec cl
-jnz @lvl1wall5
-calc wall 42 190
-pixel [wall] 15
-
-calc wall 42 298 
-mov cl,4
-@lvl1wall6:
-pixel [wall] 15
-sub [wall],2
-dec cl
-jnz @lvl1wall6
-mov cx,30
-@lvl1wall7:
-pixel [wall] 9
-sub [wall],2
-dec cx
-jnz @lvl1wall7
-pixel [wall] 15
-calc wall 28 260
-pixel [wall] 30h
-
-mov [byte ptr laser],2
-calc lasert 139 120
-mov di,[lasert]
-mov [word ptr laser+1],di
-mov [word ptr laser+4],di
-mov [byte ptr laser+3],1
-inc di
-mov [word ptr laser+6],di
-mov [word ptr laser+9],di
-mov [byte ptr laser+8],1
-mov [lasert],0
-mov [byte ptr enemy],1
-mov [word ptr enemy+1],di
-mov [byte ptr enemy+17],1
-mov [byte ptr enemy+25],8
-mov [byte ptr enemy+33],8
-ret 
-endp lvl1
-
-proc lvl2
-calc pcor 170 22
-call drawlvlframe
-mov [byte ptr laser],0
-mov [lasert],0
-calc wall 168 22
-;horline [wall] 9 10
-calc wall 100 100
-;mov di,[wall]
-;mov [byte ptr enemy],1
-;mov [word ptr enemy+1],di
-;mov [byte ptr enemy+4],1
-;mov [byte ptr enemy+3],3
-;mov [byte ptr enemy+5],8
-;mov [byte ptr enemy+6],8
-
-ret
-endp lvl2
 
 proc drawshape
 mov bp,sp
@@ -1145,23 +1096,45 @@ verline di 15 20
 ret 2
 endp drawshape
 
+proc drawshape1
+
+ret 2
+endp drawshape1
+
 
 proc drawshape2
 mov bp,sp
 mov di,[bp+2]
-sub di,3175
+sub di,9590
+verline di 15 8
+setlaser di 3
+add di,1280
+setlaser di 3
+add di,1280
+setlaser di 3
+add di,1280
+setlaser di 3
+add di,1280
+setlaser di 3
+
+sub di,5100
+verline di 15 8
+push di
+call claser3
+mov [byte ptr es:di+320],15
+mov [byte ptr es:di+321],15
+inc di
+setlaser di 1
+add di,1280
+setlaser di 1
+add di,1280
+setlaser di 1
+add di,1280
+setlaser di 1
+add di,1280
+setlaser di 1
+add di,3822
 horline di 15 8
-setlaser di 2
-
-add di,4
-setlaser di 2
-add di,4
-setlaser di 2
-add di,4
-setlaser di 2
-add di,4
-setlaser di 2
-
 ret 2
 endp drawshape2
 
@@ -1205,48 +1178,336 @@ endp drawshape3
 proc drawshape4
 mov bp,sp
 mov di,[bp+2]
-sub di,632
+sub di,1252
 setlaser di 1
 sub di,2
 setlaser di 3
-sub di,640
-push di
-call claser3
-add di,2
+add di,340
+pixel di 15
+sub di,30
 push di
 call claser0
+sub di,10
+pixel di 15
+add di,10
+push di
+call claser3
+sub di,5108
+setlaser di 1
+sub di,2
+setlaser di 3
+sub di,620
+pixel di 15
+sub di,30
+push di
+call claser0
+sub di,10
+pixel di 15
+add di,10
+push di
+call claser3
 ret 2
 endp drawshape4
 
 proc drawshape5
-
+mov bp,sp
+mov di,[bp+2]
+sub di,610
+setlaser di 2
+sub di,9595
+verline di 15 10
+sub di,10
+verline di 15 10
+sub di,10
+pixel di 15
+push di
+add di,640
+add di,8960
+push di
+call claser1
+add di,640
+pixel di 15
+pop di
+add di,2
+push di
+call claser0
+add di,26
+push di
+call claser3
+add di,2
+push di
+add di,9600
+pixel di 15
+call claser2
+pixel di 15
+sub di,9600
+pixel di 15
 ret 2
 endp drawshape5
 
-proc proceaduralgen
+proc drawshape6
 mov bp,sp
-mov ax,[bp+2]
-mov cx,4
-@procegen:
-push ax
-call drawshape
-add ax,70
-dec cx
-jnz @procegen
+mov di,[bp+2]
+sub di,1890
+pixel di 15
+sub di,4170
+horline di 15 6
+setlaser di 3
+setlaser di 2
+add di,320
+setlaser di 0
+setlaser di 3
+sub di,4468
+verline di 15 14
+sub di,2
+pixel di 15
+ret 2
+endp drawshape6
 
-sub ax,13080
-push ax
-call drawshape
-sub ax,12800
-push ax
-call drawshape
-sub ax,12800
-push ax
-call drawshape
+proc drawshape7
+mov bp,sp
+mov di,[bp+2]
+sub di,3830
+pixel di 15
+add di,640
+pixel di 15
+sub di,620
+pixel di 15
+add di,640
+pixel di 15
+sub di,2
+push di
+call claser3
+ret 2
+endp drawshape7
+
+proc drawshape8
+mov bp,sp
+mov di,[bp+2]
+sub di,5100
+setlaser di 3
+add di,2
+setlaser di 1
+sub di,641
+setlaser di 2
+add di,1280
+setlaser di 0
+ret 2
+endp drawshape8
+
+proc drawshape9
+mov bp,sp
+mov di,[bp+2]
+sub di,6390
+horline di 9 6
+verline di 9 6 
+add di,3200
+horline di 9 6
+sub di,3190
+verline di 9 6
+ret 2
+endp drawshape9
+
+proc drawshape10
+mov bp,sp
+mov di,[bp+2]
+sub di,2550
+pixel di 15
+setlaser di 2
+inc di
+setlaser di 2
+inc di
+horline di 15 6
+sub di,5110
+verline di 15 8
+sub di,12
+horline di 15 7
+add di,1290
+mov [byte ptr es:di],31h
+ret 2 
+endp drawshape10
+
+proc drawshape11
+mov bp,sp
+mov di,[bp+2]
+sub di,2229
+setlaser di 1
+sub di,299
+setlaser di 2
+sub di,4801
+setlaser di 3
+add di,299
+setlaser di 0
+add di,2570
+mov [byte ptr es:di],31h
+ret 2
+endp drawshape11
+
+proc drawshape12
 
 ret 2
+endp drawshape12
+
+proc proceaduralgen
+mov bp,sp
+mov ax,[seed]
+calc wall 180 22
+mov di,[wall]
+xor cx,cx
+call pspawn
+add di,70
+mov ch,3
+@gprogen:
+add cl,3
+@progen:
+push di
+call rgen
+pop di
+add di,70
+dec cl
+jnz @progen
+sub di,13080
+inc cl
+dec ch
+jnz @gprogen
+mov ch,3
+@progen2:
+push di
+call rgen
+pop di
+add di,70
+dec ch
+jnz @progen2
+push di
+call goalspawn
+
+ret 
 endp proceaduralgen
 
+proc shash
+mov al,10
+div [sseed]
+mov [sseed],al
+ret
+endp shash
+
+proc pspawn
+mov bp,sp
+push di
+sub di,2530
+mov [pcor],di
+player di
+pop di
+ret
+endp pspawn
+
+proc goalspawn
+mov bp,sp
+mov di,[bp+2]
+sub di,2540
+pixel di 30h
+ret 2
+endp goalspawn
+
+proc rgen
+xor ax,ax
+mov ah,3h
+add [sseed],ah
+xor ax,ax
+mov al,[sseed]
+mov bl,10
+div bl
+sub [sseed],al
+inc ah
+add [sseed],ah
+push di
+cmp ah,1
+je @shape1
+cmp ah,2
+je @shape2
+cmp ah,3
+je @shape3
+cmp ah,4
+je @shape4
+cmp ah,5
+je @shape5
+cmp ah,6
+je @shape6
+cmp ah,7
+je @shape7
+cmp ah,8
+je @shape8
+cmp ah,9
+je @shape9
+cmp ah,10
+je @shape10
+cmp ah,11
+je @shape11
+cmp ah,12
+je @shape12
+cmp ah,13
+je @shape13
+cmp ah,14
+je @shape14
+cmp ah,15
+je @shape15
+cmp ah,16
+je @shape16
+
+
+@shape1:
+call drawshape11
+jmp @rgenend
+@shape2:
+call drawshape2
+jmp @rgenend
+@shape3:
+call drawshape3
+jmp @rgenend
+@shape4:
+call drawshape4
+jmp @rgenend
+@shape5:
+call drawshape5
+jmp @rgenend
+@shape6:
+call drawshape6
+jmp @rgenend
+@shape7:
+call drawshape7
+jmp @rgenend
+@shape8:
+call drawshape8
+jmp @rgenend
+@shape9:
+call drawshape9
+jmp @rgenend
+@shape10:
+call drawshape10
+jmp @rgenend
+@shape11:
+call drawshape11
+jmp @rgenend
+@shape12:
+call drawshape12
+jmp @rgenend
+@shape13:
+call drawshape1
+jmp @rgenend
+@shape14:
+call drawshape2
+jmp @rgenend
+@shape15:
+call drawshape3
+jmp @rgenend
+@shape16:
+call drawshape5
+jmp @rgenend
+
+
+@rgenend:
+ret
+endp rgen
 
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1262,19 +1523,19 @@ mov ax,13h
 int 10h              ;switch to mode 13h
 
 
-call selectlvl            ;generate level 1
 
+;call mainmenu            ;generate level 1
+
+;call selectlvl
+call drawlvlframe
 calc wall 180 22
 push [wall]
-;call drawshape
-push [wall]
-;call proceaduralgen
-call drawshape4
+call drawshape7
+
 
 @waitforkey:
 call buffertoscreen
 inc [lasert]
-;call enemyai
 cmp [lasert],100h
 jne @waitforkey2
 call mlaser
@@ -1402,6 +1663,8 @@ cmp [byte ptr es:di],30h
 je @goalreached
 cmp [byte ptr es:di],31h
 je @heal
+cmp [byte ptr es:di],0Eh
+je @incscore
 cmp [byte ptr es:di],9
 jne @stopmovement
 dec [health]
@@ -1421,9 +1684,12 @@ mov [byte ptr es:di],12h
 call lives
 jmp @stopmovement
 
+@incscore:
+inc [score]
+jmp @moveplayer
+
 @goalreached:
 mov [byte ptr laser],0
-call clearscreen
 inc [currentlvl]
 call selectlvl
 jmp @waitforkey
@@ -1435,9 +1701,11 @@ jmp @waitforkey
 
         
 exit:
+call filesave
 mov al,03h
 mov ah,0
 int 10h
+call displayscore
 mov ax, 4c00h
 int 21h
 END start
