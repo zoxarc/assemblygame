@@ -21,6 +21,7 @@ mainmsg db 'load existing save? (y or n):','$'
 scoremsg db 'your score is:','$'
 endmsg db 'press any key to continue','$'
 mainin db ?
+cshape db 16 dup(0)
 inttostr db 6 dup(?)
 rinttostr db 6 dup(?)
 lasert dw 0
@@ -1077,12 +1078,19 @@ mov [health],20
 call lives
 call filesave
 call proceaduralgen
+push si
+mov si,16
+@resetshape:
+mov [byte ptr cshape+si-1],0
+dec si
+jnz @resetshape
+pop si
 
 ret
 endp selectlvl
 
 
-proc drawshape
+proc drawshapea
 mov bp,sp
 mov di,[bp+2]
 horline di 15 35
@@ -1094,9 +1102,9 @@ add di,68
 
 verline di 15 20
 ret 2
-endp drawshape
+endp drawshapea
 
-proc drawshape1
+proc drawshape
 mov bp,sp
 mov di,[bp+2]
 add di,640
@@ -1107,6 +1115,46 @@ verline di 4 30
 
 add di,72
 verline di 4 30
+ret 2
+endp drawshape
+
+proc drawshape1
+mov bp,sp
+mov di,[bp+2]
+add di,10
+push di
+add di,2
+horline di 9 20
+push di
+sub di,3834
+horline di 9 18
+pop di
+sub di,1921
+setlaser di 1
+pop di
+sub di,11520
+verline di 9 19
+horline di 9 23
+push di
+add di,324
+setlaser di 0
+pop di
+add di,3848
+horline di 9 15
+verline di 9 6
+push di
+add di,1924
+pixel di 2Bh
+add di,4
+pixel di 2Bh
+add di,4
+mov [byte ptr es:di],31h
+pop di
+sub di,3804
+verline di 9 13
+add di,1920
+setlaser di 3
+
 ret 2
 endp drawshape1
 
@@ -1280,9 +1328,10 @@ endp drawshape5
 proc drawshape6
 mov bp,sp
 mov di,[bp+2]
-sub di,1890
-pixel di 15
+sub di,1887
+horline di 15 3
 sub di,4170
+push di
 horline di 15 6
 setlaser di 3
 setlaser di 2
@@ -1292,7 +1341,16 @@ setlaser di 3
 sub di,4468
 verline di 15 14
 sub di,2
-pixel di 15
+horline di 15 3
+pop di
+add di,12
+horline di 15 6
+add di,11
+setlaser di 1
+setlaser di 2
+add di,320
+setlaser di 1
+setlaser di 0
 ret 2
 endp drawshape6
 
@@ -1362,16 +1420,34 @@ endp drawshape10
 proc drawshape11
 mov bp,sp
 mov di,[bp+2]
-sub di,2229
+sub di,3509
 setlaser di 1
-sub di,299
+add di,320
+setlaser di 1
+sub di,279
 setlaser di 2
-sub di,4801
+inc di
+setlaser di 2
+sub di,6081
 setlaser di 3
-add di,299
+sub di,320
+setlaser di 3
+add di,279
+setlaser di 0
+dec di
 setlaser di 0
 add di,2570
 mov [byte ptr es:di],31h
+add di,4
+mov [byte ptr es:di],0Eh
+add di,4
+mov [byte ptr es:di],0Eh
+add di,4
+mov [byte ptr es:di],0Eh
+add di,4
+mov [byte ptr es:di],0Eh
+add di,4
+mov [byte ptr es:di],0Eh
 ret 2
 endp drawshape11
 
@@ -1379,6 +1455,16 @@ proc drawshape12
 
 ret 2
 endp drawshape12
+
+proc drawshape13
+
+ret 2
+endp drawshape13
+
+proc drawshape14
+
+ret 2
+endp drawshape14
 
 proc proceaduralgen
 mov bp,sp
@@ -1425,12 +1511,13 @@ endp shash
 
 proc pspawn
 mov bp,sp
+mov di,[bp+2]
 push di
 sub di,2530
 mov [pcor],di
 player di
 pop di
-ret
+ret 2
 endp pspawn
 
 proc goalspawn
@@ -1443,101 +1530,224 @@ endp goalspawn
 
 proc rgen
 xor ax,ax
+push si
 mov ah,3h
 add [sseed],ah
 xor ax,ax
 mov al,[sseed]
-mov bl,10
+mov bl,16
 div bl
 sub [sseed],al
 inc ah
 add [sseed],ah
 push di
 cmp ah,1
-je @shape1
+je @ck1
 cmp ah,2
-je @shape2
+je @ck2
 cmp ah,3
-je @shape3
+je @ck3
 cmp ah,4
-je @shape4
+je @ck4
 cmp ah,5
-je @shape5
+je @ck5
 cmp ah,6
-je @shape6
+je @ck6
 cmp ah,7
-je @shape7
+je @ck7
 cmp ah,8
-je @shape8
+je @ck8
 cmp ah,9
-je @shape9
+je @ck9
 cmp ah,10
-je @shape10
+je @ck10
 cmp ah,11
-je @shape11
+je @ck11
 cmp ah,12
-je @shape12
+je @ck12
 cmp ah,13
-je @shape13
+je @ck13
 cmp ah,14
-je @shape14
+je @ck14
 cmp ah,15
-je @shape15
+je @ck15
 cmp ah,16
-je @shape16
+je @ck16
 
+@ck1:
+jmp @shape1
+
+@ck2:
+jmp @shape2
+
+@ck3:
+jmp @shape3
+
+@ck4:
+jmp @shape4
+
+@ck5:
+jmp @shape5
+
+@ck6:
+jmp @shape6
+
+@ck7:
+jmp @shape7
+
+@ck8:
+jmp @shape8
+
+@ck9:
+jmp @shape9
+
+@ck10:
+jmp @shape10
+
+@ck11:
+jmp @shape11
+
+@ck12:
+jmp @shape12
+
+@ck13:
+jmp @shape13
+
+@ck14:
+jmp @shape14
+
+@ck15:
+jmp @shape15
+
+@ck16:
+jmp @shape16
 
 @shape1:
-call drawshape11
-jmp @rgenend
-@shape2:
-call drawshape2
-jmp @rgenend
-@shape3:
-call drawshape3
-jmp @rgenend
-@shape4:
-call drawshape4
-jmp @rgenend
-@shape5:
-call drawshape5
-jmp @rgenend
-@shape6:
-call drawshape6
-jmp @rgenend
-@shape7:
-call drawshape7
-jmp @rgenend
-@shape8:
-call drawshape8
-jmp @rgenend
-@shape9:
-call drawshape9
-jmp @rgenend
-@shape10:
-call drawshape10
-jmp @rgenend
-@shape11:
-call drawshape11
-jmp @rgenend
-@shape12:
-call drawshape12
-jmp @rgenend
-@shape13:
+cmp [byte ptr cshape],0
+jne @shape2
 call drawshape1
-jmp @rgenend
-@shape14:
-call drawshape2
-jmp @rgenend
-@shape15:
-call drawshape3
-jmp @rgenend
-@shape16:
-call drawshape5
+inc [byte ptr cshape]
 jmp @rgenend
 
+@shape2:
+cmp [byte ptr cshape+1],0
+jne @shape3
+call drawshape2
+inc [byte ptr cshape+1]
+jmp @rgenend
+
+@shape3:
+cmp [byte ptr cshape+2],0
+jne @shape4
+call drawshape3
+inc [byte ptr cshape+2]
+jmp @rgenend
+
+@shape4:
+cmp [byte ptr cshape+3],0
+jne @shape5
+call drawshape4
+inc [byte ptr cshape+3]
+jmp @rgenend
+
+@shape5:
+cmp [byte ptr cshape+4],0
+jne @shape6
+call drawshape5
+inc [byte ptr cshape+4]
+jmp @rgenend
+
+@shape6:
+cmp [byte ptr cshape+5],0
+jne @shape7
+call drawshape6
+inc [byte ptr cshape+5]
+jmp @rgenend
+
+@shape7:
+cmp [byte ptr cshape+6],0
+jne @shape8
+call drawshape7
+inc [byte ptr cshape+6]
+jmp @rgenend
+
+@shape8:
+cmp [byte ptr cshape+7],0
+jne @shape9
+call drawshape8
+inc [byte ptr cshape+7]
+jmp @rgenend
+
+@shape9:
+cmp [byte ptr cshape+8],0
+jne @shape10
+call drawshape9
+inc [byte ptr cshape+8]
+jmp @rgenend
+
+@shape10:
+cmp [byte ptr cshape+9],0
+jne @shape11
+call drawshape10
+inc [byte ptr cshape+9]
+jmp @rgenend
+
+@shape11:
+cmp [byte ptr cshape+10],0
+jne @shape12
+call drawshape11
+inc [byte ptr cshape+10]
+jmp @rgenend
+
+@shape12:
+cmp [byte ptr cshape+11],0
+jne @shape13
+call drawshape12
+inc [byte ptr cshape+11]
+jmp @rgenend
+
+@shape13:
+cmp [byte ptr cshape+12],0
+jne @shape14
+call drawshape1
+inc [byte ptr cshape+12]
+jmp @rgenend
+
+@shape14:
+cmp [byte ptr cshape+13],0
+jne @shape15
+call drawshape2
+inc [byte ptr cshape+13]
+jmp @rgenend
+
+@shape15:
+cmp [byte ptr cshape+14],0
+jne @shape16
+call pspawn
+inc [byte ptr cshape+14]
+jmp @rgenend
+
+@shape16:
+cmp [byte ptr cshape+15],0
+jne @shapeck
+call goalspawn
+inc [byte ptr cshape+15]
+jmp @rgenend
+
+@c1:
+jmp @shape1
+
+
+@shapeck:
+mov si,16
+@shapeck2:
+cmp [byte ptr cshape+si-1],0
+je @c1
+dec si
+jnz @shapeck2
 
 @rgenend:
+pop si
 ret
 endp rgen
 
@@ -1563,10 +1773,12 @@ calc pcor 110 110
 call drawlvlframe
 calc wall 120 100
 push [wall]
-call drawshape1
+call drawshape
 calc wall 120 100
 push [wall]
-call drawshape4
+call drawshape6
+
+;4 7 8 9 10 12 13 14
 
 
 @waitforkey:
