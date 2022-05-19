@@ -14,9 +14,9 @@ wall dw ?
 pcor dw  ?  ; coordinates for player
 pcorbackup dw ? ; Backup of pcor
 upcor db ?,?
-maxhealth dw 40  ;the max amount of health the player can have
-health dw 40     ;how much health the player has now
-pdir dw 2       ; 0 is left, 1 is up, 2 is right, 3 is down
+maxhealth dw 20  ;the max amount of health the player can have
+health dw 20    ;how much health the player has now
+pdir dw 3       ; 0 is left, 1 is up, 2 is right, 3 is down
 mainmsg db 'load existing save? (y or n):','$'
 scoremsg db 'your score is:','$'
 endmsg db 'press any key to continue','$'
@@ -573,6 +573,10 @@ je @lackend
 cmp [byte ptr es:di],30h
 je @lackend
 cmp [byte ptr es:di],31h
+je @lackend
+cmp [byte ptr es:di],0Eh
+je @lackend
+cmp [byte ptr es:di],2Bh
 je @lackend
 
 dec [health]
@@ -1131,6 +1135,8 @@ horline di 9 18
 pop di
 sub di,1921
 setlaser di 1
+sub di,583
+verline di 15 3
 pop di
 sub di,11520
 verline di 9 19
@@ -1166,6 +1172,10 @@ sub di,5420
 pixel di 0Eh
 sub di,4156
 verline di 15 8
+push di
+sub di,24
+verline di 15 9
+pop di
 setlaser di 3
 add di,1280
 setlaser di 3
@@ -1175,6 +1185,7 @@ add di,1280
 setlaser di 3
 add di,1280
 setlaser di 3
+
 
 push di
 sub di,5100
@@ -1193,6 +1204,10 @@ add di,1280
 setlaser di 1
 add di,1280
 setlaser di 1
+push di
+sub di,5097
+verline di 15 9
+pop di
 add di,3822
 horline di 15 8
 pop di
@@ -1357,31 +1372,37 @@ endp drawshape6
 proc drawshape7
 mov bp,sp
 mov di,[bp+2]
-sub di,3830
-pixel di 15
-add di,640
-pixel di 15
-sub di,620
-pixel di 15
-add di,640
-pixel di 15
-sub di,2
+sub di,1912
+sub di,9590
+verline di 15 14
+push cx
 push di
-call claser3
+add di,30
+verline di 15 14
+sub di,15
+pixel di 0Eh
+add di,2575
+mov cl,5
+@7rightlaser:
+setlaser di 3
+add di,1280
+dec cl
+jnz @7rightlaser
+pop di
+add di,3201
+mov cl,5
+@7leftlaser:
+setlaser di 1
+add di,1280
+dec cl
+jnz @7leftlaser
+pop cx
 ret 2
 endp drawshape7
 
 proc drawshape8
 mov bp,sp
 mov di,[bp+2]
-sub di,5100
-setlaser di 3
-add di,2
-setlaser di 1
-sub di,641
-setlaser di 2
-add di,1280
-setlaser di 0
 ret 2
 endp drawshape8
 
@@ -1472,11 +1493,9 @@ mov ax,[seed]
 calc wall 180 22
 mov di,[wall]
 xor cx,cx
-call pspawn
-add di,70
-mov ch,3
+mov ch,4
 @gprogen:
-add cl,3
+mov cl,4
 @progen:
 push di
 call rgen
@@ -1485,19 +1504,8 @@ add di,70
 dec cl
 jnz @progen
 sub di,13080
-inc cl
 dec ch
 jnz @gprogen
-mov ch,3
-@progen2:
-push di
-call rgen
-pop di
-add di,70
-dec ch
-jnz @progen2
-push di
-call goalspawn
 
 ret 
 endp proceaduralgen
@@ -1513,18 +1521,35 @@ proc pspawn
 mov bp,sp
 mov di,[bp+2]
 push di
-sub di,2530
+horline di 15 3
+sub di,1920
+verline di 15 3
+sub di,10240
+verline di 15 4
+horline di 15 3
+add di,64
+horline di 15 3
+add di,4
+verline di 15 4
+add di,10240
+verline di 15 4
+add di,1916
+horline di 15 3
+pop di
+sub di,6367
 mov [pcor],di
 player di
-pop di
 ret 2
 endp pspawn
 
 proc goalspawn
 mov bp,sp
 mov di,[bp+2]
-sub di,2540
+push di
+sub di,6367
 pixel di 30h
+pop di
+
 ret 2
 endp goalspawn
 
@@ -1709,14 +1734,14 @@ jmp @rgenend
 @shape13:
 cmp [byte ptr cshape+12],0
 jne @shape14
-call drawshape1
+call drawshape13
 inc [byte ptr cshape+12]
 jmp @rgenend
 
 @shape14:
 cmp [byte ptr cshape+13],0
 jne @shape15
-call drawshape2
+call drawshape14
 inc [byte ptr cshape+13]
 jmp @rgenend
 
@@ -1729,22 +1754,14 @@ jmp @rgenend
 
 @shape16:
 cmp [byte ptr cshape+15],0
-jne @shapeck
+jne @sck1
 call goalspawn
 inc [byte ptr cshape+15]
 jmp @rgenend
 
-@c1:
+
+@sck1:
 jmp @shape1
-
-
-@shapeck:
-mov si,16
-@shapeck2:
-cmp [byte ptr cshape+si-1],0
-je @c1
-dec si
-jnz @shapeck2
 
 @rgenend:
 pop si
@@ -1768,7 +1785,6 @@ int 10h              ;switch to mode 13h
 
 ;call mainmenu            ;generate level 1
 
-;call selectlvl
 calc pcor 110 110
 call drawlvlframe
 calc wall 120 100
@@ -1778,7 +1794,7 @@ calc wall 120 100
 push [wall]
 call drawshape6
 
-;4 7 8 9 10 12 13 14
+;4 8 9 10 12 13 14 15
 
 
 @waitforkey:
