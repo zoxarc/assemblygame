@@ -1518,25 +1518,24 @@ endp drawshape14
 proc drawshape15
 mov bp,sp
 mov di,[bp+2]
-push di
-horline di 15 3
-sub di,1920
-verline di 15 3
-sub di,10240
-verline di 15 4
-horline di 15 3
-add di,64
-horline di 15 3
-add di,4
-verline di 15 4
-add di,10240
-verline di 15 4
-add di,1916
-horline di 15 3
-pop di
-sub di,6367
+sub di,7329
 mov [pcor],di
 player di
+sub di,1930
+horline di 15 2
+verline di 15 2
+add di,21
+horline di 15 2
+add di,2
+verline di 15 2
+add di,5440
+verline di 15 2
+add di,638
+pixel di 15
+sub di,21
+horline di 15 2
+sub di,640
+pixel di 15
 ret 2
 endp drawshape15
 
@@ -1820,9 +1819,9 @@ push [wall]
 call drawshape
 calc wall 120 100
 push [wall]
-call drawshape10
+call drawshape15
 
-;9 12 13 14 16
+;9 12 13 14 15 16
 
 
 @waitforkey:
