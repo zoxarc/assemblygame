@@ -455,10 +455,10 @@ je @_lend
 mov di,[word ptr laser+si]
 mov cl,[byte ptr laser+si+2]
 cmp cx,2
-jcxz @lcxz
-je @laserup
-jb @laserright
-ja @laserleft
+jcxz @laserleft
+je @lcxz
+jb @laserup
+ja @laserright
 @laserright:
 dec di
 mov [byte ptr es:di],12h
@@ -1134,7 +1134,7 @@ sub di,3834
 horline di 9 18
 pop di
 sub di,1921
-setlaser di 1
+setlaser di 3
 sub di,583
 verline di 15 3
 pop di
@@ -1143,7 +1143,7 @@ verline di 9 19
 horline di 9 23
 push di
 add di,324
-setlaser di 0
+setlaser di 2
 pop di
 add di,3848
 horline di 9 15
@@ -1159,8 +1159,7 @@ pop di
 sub di,3804
 verline di 9 13
 add di,1920
-setlaser di 3
-
+setlaser di 0
 ret 2
 endp drawshape1
 
@@ -1176,15 +1175,15 @@ push di
 sub di,24
 verline di 15 9
 pop di
-setlaser di 3
+setlaser di 0
 add di,1280
-setlaser di 3
+setlaser di 0
 add di,1280
-setlaser di 3
+setlaser di 0
 add di,1280
-setlaser di 3
+setlaser di 0
 add di,1280
-setlaser di 3
+setlaser di 0
 
 
 push di
@@ -1195,15 +1194,15 @@ call claser3
 mov [byte ptr es:di+320],15
 mov [byte ptr es:di+321],15
 inc di
-setlaser di 1
+setlaser di 3
 add di,1280
-setlaser di 1
+setlaser di 3
 add di,1280
-setlaser di 1
+setlaser di 3
 add di,1280
-setlaser di 1
+setlaser di 3
 add di,1280
-setlaser di 1
+setlaser di 3
 push di
 sub di,5097
 verline di 15 9
@@ -1214,9 +1213,9 @@ pop di
 sub di,319
 horline di 15 3
 add di,5
-setlaser di 1
+setlaser di 3
 add di,320
-setlaser di 1
+setlaser di 3
 sub di,2880
 add di,6
 pixel di 2Bh
@@ -1273,34 +1272,6 @@ endp drawshape3
 proc drawshape4
 mov bp,sp
 mov di,[bp+2]
-sub di,1252
-setlaser di 1
-sub di,2
-setlaser di 3
-add di,340
-pixel di 15
-sub di,30
-push di
-call claser0
-sub di,10
-pixel di 15
-add di,10
-push di
-call claser3
-sub di,5108
-setlaser di 1
-sub di,2
-setlaser di 3
-sub di,620
-pixel di 15
-sub di,30
-push di
-call claser0
-sub di,10
-pixel di 15
-add di,10
-push di
-call claser3
 ret 2
 endp drawshape4
 
@@ -1308,7 +1279,7 @@ proc drawshape5
 mov bp,sp
 mov di,[bp+2]
 sub di,610
-setlaser di 2
+setlaser di 1
 sub di,9595
 verline di 15 10
 sub di,10
@@ -1348,11 +1319,11 @@ horline di 15 3
 sub di,4170
 push di
 horline di 15 6
-setlaser di 3
-setlaser di 2
-add di,320
 setlaser di 0
-setlaser di 3
+setlaser di 1
+add di,320
+setlaser di 2
+setlaser di 0
 sub di,4468
 verline di 15 14
 sub di,2
@@ -1361,11 +1332,11 @@ pop di
 add di,12
 horline di 15 6
 add di,11
+setlaser di 3
 setlaser di 1
-setlaser di 2
 add di,320
-setlaser di 1
-setlaser di 0
+setlaser di 3
+setlaser di 2
 ret 2
 endp drawshape6
 
@@ -1487,6 +1458,42 @@ proc drawshape14
 ret 2
 endp drawshape14
 
+proc drawshape15
+mov bp,sp
+mov di,[bp+2]
+push di
+horline di 15 3
+sub di,1920
+verline di 15 3
+sub di,10240
+verline di 15 4
+horline di 15 3
+add di,64
+horline di 15 3
+add di,4
+verline di 15 4
+add di,10240
+verline di 15 4
+add di,1916
+horline di 15 3
+pop di
+sub di,6367
+mov [pcor],di
+player di
+ret 2
+endp drawshape15
+
+proc drawshape16
+mov bp,sp
+mov di,[bp+2]
+push di
+sub di,6367
+pixel di 30h
+pop di
+
+ret 2
+endp drawshape16
+
 proc proceaduralgen
 mov bp,sp
 mov ax,[seed]
@@ -1516,42 +1523,6 @@ div [sseed]
 mov [sseed],al
 ret
 endp shash
-
-proc pspawn
-mov bp,sp
-mov di,[bp+2]
-push di
-horline di 15 3
-sub di,1920
-verline di 15 3
-sub di,10240
-verline di 15 4
-horline di 15 3
-add di,64
-horline di 15 3
-add di,4
-verline di 15 4
-add di,10240
-verline di 15 4
-add di,1916
-horline di 15 3
-pop di
-sub di,6367
-mov [pcor],di
-player di
-ret 2
-endp pspawn
-
-proc goalspawn
-mov bp,sp
-mov di,[bp+2]
-push di
-sub di,6367
-pixel di 30h
-pop di
-
-ret 2
-endp goalspawn
 
 proc rgen
 xor ax,ax
@@ -1748,14 +1719,14 @@ jmp @rgenend
 @shape15:
 cmp [byte ptr cshape+14],0
 jne @shape16
-call pspawn
+call drawshape15
 inc [byte ptr cshape+14]
 jmp @rgenend
 
 @shape16:
 cmp [byte ptr cshape+15],0
 jne @sck1
-call goalspawn
+call drawshape16
 inc [byte ptr cshape+15]
 jmp @rgenend
 
@@ -1792,9 +1763,9 @@ push [wall]
 call drawshape
 calc wall 120 100
 push [wall]
-call drawshape6
+call drawshape7
 
-;4 8 9 10 12 13 14 15
+;4 8 9 10 12 13 14 16
 
 
 @waitforkey:
