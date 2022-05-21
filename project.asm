@@ -1373,7 +1373,38 @@ endp drawshape7
 
 proc drawshape8
 mov bp,sp
+push cx
 mov di,[bp+2]
+sub di,2550
+horline di 15 25
+push di
+sub di,5760
+horline di 15 25
+push di
+add di,50
+verline di 15 10
+add di,2555
+pixel di 0Eh
+add di,1280
+pixel di 0Eh
+pop di
+mov cx,5
+add di,320
+@8loop1:
+setlaser di 2
+add di,8
+dec cx
+jnz @8loop1
+pop di
+mov cx,5
+add di,4
+@8loop2:
+setlaser di 1
+add di,8
+dec cx
+jnz @8loop2
+
+pop cx
 ret 2
 endp drawshape8
 
@@ -1763,7 +1794,7 @@ push [wall]
 call drawshape
 calc wall 120 100
 push [wall]
-call drawshape11
+call drawshape8
 
 ;4 8 9 10 12 13 14 16
 
