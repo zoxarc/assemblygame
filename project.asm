@@ -1355,7 +1355,7 @@ pixel di 0Eh
 add di,2575
 mov cl,5
 @7rightlaser:
-setlaser di 3
+setlaser di 0
 add di,1280
 dec cl
 jnz @7rightlaser
@@ -1363,7 +1363,7 @@ pop di
 add di,3201
 mov cl,5
 @7leftlaser:
-setlaser di 1
+setlaser di 3
 add di,1280
 dec cl
 jnz @7leftlaser
@@ -1413,21 +1413,21 @@ proc drawshape11
 mov bp,sp
 mov di,[bp+2]
 sub di,3509
-setlaser di 1
+setlaser di 3
 add di,320
-setlaser di 1
+setlaser di 3
 sub di,279
-setlaser di 2
+setlaser di 1
 inc di
-setlaser di 2
+setlaser di 1
 sub di,6081
-setlaser di 3
+setlaser di 0
 sub di,320
-setlaser di 3
+setlaser di 0
 add di,279
-setlaser di 0
+setlaser di 2
 dec di
-setlaser di 0
+setlaser di 2
 add di,2570
 mov [byte ptr es:di],31h
 add di,4
@@ -1763,7 +1763,7 @@ push [wall]
 call drawshape
 calc wall 120 100
 push [wall]
-call drawshape7
+call drawshape11
 
 ;4 8 9 10 12 13 14 16
 
