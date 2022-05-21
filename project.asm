@@ -1272,6 +1272,24 @@ endp drawshape3
 proc drawshape4
 mov bp,sp
 mov di,[bp+2]
+horline di 15 14
+sub di,3840
+horline di 15 6
+push di
+add di,18
+horline di 15 14
+sub di,7652
+verline di 15 13
+sub di,44
+horline di 15 22
+verline di 15 7
+add di,3840
+horline di 15 19
+sub di,2555
+pixel di 0Eh
+pop di
+sub di,3830
+verline di 15 6
 ret 2
 endp drawshape4
 
@@ -1411,13 +1429,7 @@ endp drawshape8
 proc drawshape9
 mov bp,sp
 mov di,[bp+2]
-sub di,6390
-horline di 9 6
-verline di 9 6 
-add di,3200
-horline di 9 6
-sub di,3190
-verline di 9 6
+
 ret 2
 endp drawshape9
 
@@ -1794,9 +1806,9 @@ push [wall]
 call drawshape
 calc wall 120 100
 push [wall]
-call drawshape8
+call drawshape4
 
-;4 8 9 10 12 13 14 16
+;4 9 10 12 13 14 16
 
 
 @waitforkey:
