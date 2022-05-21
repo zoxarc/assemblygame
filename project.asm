@@ -1436,19 +1436,33 @@ endp drawshape9
 proc drawshape10
 mov bp,sp
 mov di,[bp+2]
-sub di,2550
-pixel di 15
-setlaser di 2
+sub di,3180
+setlaser di 1
 inc di
-setlaser di 2
+setlaser di 1
 inc di
 horline di 15 6
 sub di,5110
+push di
 verline di 15 8
 sub di,12
 horline di 15 7
-add di,1290
-mov [byte ptr es:di],31h
+add di,2568
+pixel di 31h
+pop di
+add di,10
+push di
+verline di 15 8
+horline di 15 7
+add di,332
+setlaser di 2
+inc di
+setlaser di 2
+add di,4787
+horline di 15 7
+pop di
+add di,2565
+pixel di 0Eh
 ret 2 
 endp drawshape10
 
@@ -1806,9 +1820,9 @@ push [wall]
 call drawshape
 calc wall 120 100
 push [wall]
-call drawshape4
+call drawshape10
 
-;4 9 10 12 13 14 16
+;9 12 13 14 16
 
 
 @waitforkey:
