@@ -194,8 +194,8 @@ endp mainmenu
 
 ;switches to text mode, prints the score and ends the program
 proc endprogram
-mov al,03h
-mov ah,0
+call filesave
+mov ax,0003h
 int 10h
 call displayscore
 mov ax, 4c00h
@@ -1538,7 +1538,33 @@ endp drawshape11
 
 proc drawshape12
 mov bp,sp
+push cx
 mov di,[bp+2]
+push di
+horline di 15 35
+sub di,12160
+verline di 15 14
+horline di 15 35
+push di
+mov cx,4
+@12loop1:
+add di,16
+verline di 15 14
+dec cx
+jnz @12loop1
+pop di
+add di,3528
+mov cx,4
+@12loop2:
+verline di 15 14
+add di,16
+dec cx
+jnz @12loop2
+pop di
+sub di,1888
+pixel di 0Eh
+
+pop cx
 ret 2
 endp drawshape12
 
@@ -1869,7 +1895,7 @@ calc wall 120 100
 push [wall]
 call drawshape12
 
-;12 13 14
+;13 14
 
 
 @waitforkey:
@@ -2048,8 +2074,7 @@ jmp @waitforkey
         
 exit:
 call filesave
-mov al,03h
-mov ah,0
+mov ax,0003h
 int 10h
 call displayscore
 mov ax, 4c00h
