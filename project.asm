@@ -1521,18 +1521,12 @@ add di,279
 setlaser di 2
 dec di
 setlaser di 2
-add di,2570
-mov [byte ptr es:di],31h
-add di,4
-mov [byte ptr es:di],0Eh
-add di,4
-mov [byte ptr es:di],0Eh
-add di,4
-mov [byte ptr es:di],0Eh
-add di,4
-mov [byte ptr es:di],0Eh
-add di,4
-mov [byte ptr es:di],0Eh
+add di,2574
+pixel di 0Eh
+add di,8
+pixel di 31h
+add di,8
+pixel di 0Eh
 ret 2
 endp drawshape11
 
@@ -1569,11 +1563,44 @@ ret 2
 endp drawshape12
 
 proc drawshape13
+mov bp,sp
+mov di,[bp+2]
+horline di 15 30
+push di
+sub di,3840
+horline di 15 30
+push di
+sub di,3840
+horline di 15 30
+horline di 12h 3
+add di,60
+verline di 15 13
+add di,2240
+setlaser di 0
+add di,1280
+setlaser di 0
+pop di
+add di,16
+horline di 12h 4
+verline di 15 6
+add di,8
+verline di 15 6
+add di,16
+horline di 12h 4
+verline di 15 6
+add di,8
+verline di 15 6
+sub di,1272
+pixel di 2Bh
 
+
+pop di
 ret 2
 endp drawshape13
 
 proc drawshape14
+mov bp,sp
+mov di,[bp+2]
 
 ret 2
 endp drawshape14
@@ -1886,16 +1913,17 @@ int 10h              ;switch to mode 13h
 
 
 
-calc pcor 110 110
+calc pcor 90 100
 call drawlvlframe
 calc wall 120 100
 push [wall]
 call drawshape
 calc wall 120 100
 push [wall]
-call drawshape12
+call drawshape13
 
-;13 14
+;14
+;5 6 7
 
 
 @waitforkey:
