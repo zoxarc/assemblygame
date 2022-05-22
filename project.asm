@@ -1336,9 +1336,7 @@ endp drawshape4
 proc drawshape5
 mov bp,sp
 mov di,[bp+2]
-sub di,610
-setlaser di 1
-sub di,9595
+sub di,10205
 verline di 15 10
 sub di,10
 verline di 15 10
@@ -1972,25 +1970,8 @@ mov ds, ax           ;ds = segment for data
 mov ax,bufferseg 
 mov es,ax            ;es = segment for buffer
 assume es:bufferseg  ;bind es to bufferseg
-;call mainmenu            ;generate the game
-mov ax,13h    
-int 10h              ;switch to mode 13h
+call mainmenu            ;generate the game
 
-
-
-
-
-
-calc pcor 90 100
-call drawlvlframe
-calc wall 120 100
-push [wall]
-call drawshape
-calc wall 120 100
-push [wall]
-call drawshape6
-
-;5
 
 
 @waitforkey:
