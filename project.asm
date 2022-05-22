@@ -3,10 +3,10 @@ MODEL compact
 STACK 100h
 DATASEG
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-currentlvl db 2
-seed dw ?
-oseed dw ?
-sseed db ?
+currentlvl db 1
+seed dw ?      ;the seed with which a level is generated
+oseed dw ?     ;the original seed
+sseed db ?     ;the seed responisble for the pattern
 filename db 'save.txt',0
 filebuffer db 6 dup(?)
 score dw 0
@@ -18,22 +18,15 @@ maxhealth dw 20  ;the max amount of health the player can have
 health dw 20    ;how much health the player has now
 pdir dw 3       ; 0 is left, 1 is up, 2 is right, 3 is down
 mainmsg db 'load existing save? (y or n):','$'
-scoremsg db 'your score is:','$'
-endmsg db 'press any key to continue','$'
+scoremsg db 'game over! your score is:','$'
 mainin db ?
 cshape db 16 dup(0)
 inttostr db 6 dup(?)
 rinttostr db 6 dup(?)
 lasert dw 0
 laser db 500 dup(0)
-uenemy db ?,?
-enemy db 100 dup(0)
-enemyt db 100 dup(0)
 FARDATA bufferseg ;the buffer
 buffer db 64000 dup(12h)
-
-
-;r	project.asm	/^$/;"	l 
 
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ;           macros
@@ -171,6 +164,7 @@ endm strint
 CODESEG
 ;            procedures
 
+;main menu generates the level, restores a previous save
 proc mainmenu
 mov al,03h
 mov ah,0
@@ -198,6 +192,7 @@ int 10h              ;switch to mode 13h
 ret
 endp mainmenu
 
+;switches to text mode, prints the score and ends the program
 proc endprogram
 mov al,03h
 mov ah,0
@@ -208,6 +203,7 @@ int 21h
 ret
 endp endprogram
 
+; turns the score into a string
 proc integertostring
 mov bp,sp
 push ax
@@ -243,6 +239,7 @@ pop ax
 ret 2
 endp integertostring
 
+;prints the score
 proc displayscore
 lea dx,[scoremsg]
 mov ah,9h
@@ -274,6 +271,7 @@ mov es,ax              ;es = segment for buffer
 ret
 endp buffertoscreen
 
+;uses rep stosw to clear the buffer
 proc clearscreen
 xor di,di
 mov cx,32000
@@ -289,6 +287,7 @@ call buffertoscreen
 ret
 endp reset
 
+;recives 2 coordinates and returns the location in buffer
 proc coordinatecalc
 mov bp,sp
 mov bx,[bp+6]        ;bx = address for return
@@ -301,6 +300,7 @@ mov [bx],di          ;Set the variable at [bx] to di
 ret 6
 endp coordinatecalc
 
+;recives the location in buffer and returns coordinates
 proc revcoordinatecalc
 mov bp,sp
 mov bl,[bp+2]
@@ -313,6 +313,7 @@ ret 4
 endp revcoordinatecalc
 
 
+;saves the file
 proc filesave
 @filestart:
 lea dx,[filename]
@@ -346,6 +347,7 @@ int 21h
 ret
 endp filesave
 
+;loads a file
 proc fileload
 xor dx,dx
 xor ax,ax
@@ -373,7 +375,7 @@ mov [oseed],0
 ret
 endp fileload
 
-;draw a rectangle using the coordinate as the top left pixel - currently broken
+;draw a rectangle using the coordinate as the top left pixel
 proc drawrect
 mov bp,sp ;Freeze the stack pointer
 xor ax,ax ;Set ax,bx,si,di to 0
@@ -397,6 +399,7 @@ jnz @outerrectloop
 ret 4
 endp drawrect
 
+;draw a 2 by 2 rectangle, used as pixels
 proc rect2x2
 mov bp,sp ;Freeze the stack pointer
 xor ax,ax ;Set di,ax,cx to 0
@@ -442,6 +445,8 @@ ret
 endp lives
 
 
+;this proc is called once a while
+;it moves every laser 1 forward if there is no collision
 proc mlaser
 push si
 push cx
@@ -555,6 +560,7 @@ pop si
 ret 
 endp mlaser
 
+;checks for laser collision
 proc laserck
 mov bp,sp
 push si
@@ -597,6 +603,7 @@ pop si
 ret 2
 endp laserck
 
+;sets up a laser
 proc setlaserproc
 mov bp,sp
 xor ax,ax
@@ -612,6 +619,7 @@ inc [byte ptr laser]
 ret 4
 endp setlaserproc
 
+;4 proceadure responsible for a rectangle that continues until it hits something
 proc claser0
 mov bp,sp
 push di
@@ -977,7 +985,7 @@ jnz @clearloop1
 ret 4
 endp clearplayer
 
-
+;encrypts the seed for level generation
 proc hash
 mov bp,sp
 push ax
@@ -1001,6 +1009,25 @@ pop ax
 ret 2
 endp hash
 
+;generates a random seed using the system clock
+;used in case there is no previous save
+proc entropy
+push ax
+push bx
+push cx
+push dx
+mov ah,2ch
+int 21h
+mov [byte ptr oseed],dl
+mov [byte ptr seed],dl
+pop dx
+pop cx
+pop bx
+pop ax
+ret
+endp entropy
+
+;draws a horizontal line
 proc drawhorline
 mov bp,sp
 xor ax,ax
@@ -1019,22 +1046,7 @@ jnz @horloop
 ret 6
 endp drawhorline
 
-proc entropy
-push ax
-push bx
-push cx
-push dx
-mov ah,2ch
-int 21h
-mov [byte ptr oseed],dl
-mov [byte ptr seed],dl
-pop dx
-pop cx
-pop bx
-pop ax
-ret
-endp entropy
-
+;draws a vertical line
 proc drawverline
 mov bp,sp
 mov ax,[bp+6] ;ax coor
@@ -1050,7 +1062,7 @@ jnz @verloop
 ret 6
 endp drawverline
 
-;180 20 , 20 20
+;draws a frame and calls lives
 proc drawlvlframe
 call lives
 calc wall 20 20
@@ -1064,6 +1076,7 @@ horline [wall] 15 142
 ret
 endp drawlvlframe
 
+;generates a level
 proc selectlvl
 call clearscreen
 call drawlvlframe
@@ -1122,6 +1135,7 @@ verline di 4 30
 ret 2
 endp drawshape
 
+;these procedures the "patterns" with which levels are generated
 proc drawshape1
 mov bp,sp
 mov di,[bp+2]
@@ -1523,7 +1537,8 @@ ret 2
 endp drawshape11
 
 proc drawshape12
-
+mov bp,sp
+mov di,[bp+2]
 ret 2
 endp drawshape12
 
@@ -1580,8 +1595,9 @@ horline di 15 5
 ret 2
 endp drawshape16
 
+;this proc generates the level
+;while selectlevel initiates everything this generates the level itself
 proc proceaduralgen
-mov bp,sp
 mov ax,[seed]
 calc wall 180 22
 mov di,[wall]
@@ -1603,6 +1619,7 @@ jnz @gprogen
 ret 
 endp proceaduralgen
 
+;a mini hash to randomize pattern order
 proc shash
 mov al,10
 div [sseed]
@@ -1610,6 +1627,7 @@ mov [sseed],al
 ret
 endp shash
 
+;calls patterns
 proc rgen
 xor ax,ax
 push si
@@ -1833,14 +1851,14 @@ mov ds, ax           ;ds = segment for data
 mov ax,bufferseg 
 mov es,ax            ;es = segment for buffer
 assume es:bufferseg  ;bind es to bufferseg
-
-;call mainmenu
+;call mainmenu            ;generate the game
 mov ax,13h    
 int 10h              ;switch to mode 13h
 
 
 
-;call mainmenu            ;generate level 1
+
+
 
 calc pcor 110 110
 call drawlvlframe
@@ -1849,7 +1867,7 @@ push [wall]
 call drawshape
 calc wall 120 100
 push [wall]
-call drawshape9
+call drawshape12
 
 ;12 13 14
 
@@ -1857,7 +1875,8 @@ call drawshape9
 @waitforkey:
 call buffertoscreen
 inc [lasert]
-cmp [lasert],100h
+;warning the number may be needed to manualy adjusted in case the lasers are slow, it depends on the cycles
+cmp [lasert],100h 
 jne @waitforkey2
 call mlaser
 mov [lasert],0
@@ -1880,7 +1899,7 @@ je @apressed
 cmp ah,20h
 je @dpressed
 cmp ah,39h
-je @interact
+je @resetlevel
 
 cmp ah,1h           
 je @exitcp
@@ -1910,7 +1929,7 @@ jmp @collisioncheck
 @exitcp:
 call endprogram
 
-@interact:
+@resetlevel:      ;resets the level
 call selectlvl
 jmp @waitforkey
 
