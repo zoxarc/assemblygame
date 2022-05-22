@@ -1542,10 +1542,18 @@ endp drawshape15
 proc drawshape16
 mov bp,sp
 mov di,[bp+2]
-push di
 sub di,6367
+push di
 pixel di 30h
+sub di,1260
+verline di 15 5
+sub di,40
+verline di 15 5
 pop di
+sub di,3204
+horline di 15 5
+add di,6400
+horline di 15 5
 
 ret 2
 endp drawshape16
@@ -1819,9 +1827,9 @@ push [wall]
 call drawshape
 calc wall 120 100
 push [wall]
-call drawshape15
+call drawshape16
 
-;9 12 13 14 15 16
+;9 12 13 14 16
 
 
 @waitforkey:
