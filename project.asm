@@ -11,6 +11,7 @@ filename db 'save.txt',0
 filebuffer db 6 dup(?)
 score dw 0
 wall dw ?
+hiddendoor dw 0
 pcor dw  ?  ; coordinates for player
 pcorbackup dw ? ; Backup of pcor
 upcor db ?,?
@@ -19,6 +20,8 @@ health dw 20    ;how much health the player has now
 pdir dw 3       ; 0 is left, 1 is up, 2 is right, 3 is down
 mainmsg db 'load existing save? (y or n):','$'
 scoremsg db 'game over! your score is:','$'
+secretmsg db 'secrets found:','$'
+secrets db 0
 mainin db ?
 cshape db 16 dup(0)
 inttostr db 6 dup(?)
@@ -1080,6 +1083,7 @@ endp drawlvlframe
 proc selectlvl
 call clearscreen
 call drawlvlframe
+inc [hiddendoor]
 mov cl,[byte ptr oseed]
 mov [byte ptr seed],cl
 mov cl,[currentlvl]
@@ -1566,7 +1570,6 @@ proc drawshape13
 mov bp,sp
 mov di,[bp+2]
 horline di 15 30
-push di
 sub di,3840
 horline di 15 30
 push di
@@ -1593,15 +1596,31 @@ verline di 15 6
 sub di,1272
 pixel di 2Bh
 
-
-pop di
 ret 2
 endp drawshape13
 
 proc drawshape14
 mov bp,sp
 mov di,[bp+2]
+sub di,2550
+horline di 15 15
+sub di,7680
+push di
+add di,2570
+pixel di 2Bh
+add di,1280
+pixel di 31h
+add di,1280
+pixel di 2Bh
+pop di
+verline di 15 13
+horline di 15 15
+add di,30
+cmp [hiddendoor],2
+jge @14end
+verline di 15 13
 
+@14end:
 ret 2
 endp drawshape14
 
@@ -1920,9 +1939,8 @@ push [wall]
 call drawshape
 calc wall 120 100
 push [wall]
-call drawshape13
+call drawshape14
 
-;14
 ;5 6 7
 
 
@@ -2061,6 +2079,7 @@ cmp [byte ptr es:di],0Eh
 je @incscore
 cmp [byte ptr es:di],2Bh
 je @largescore
+cmp [byte ptr es:di],4Fh
 cmp [byte ptr es:di],9
 jne @stopmovement
 dec [health]
@@ -2091,6 +2110,7 @@ jmp @moveplayer
 @goalreached:
 mov [byte ptr laser],0
 inc [currentlvl]
+mov [hiddendoor],0
 call selectlvl
 jmp @waitforkey
 
