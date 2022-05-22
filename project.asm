@@ -1373,25 +1373,39 @@ proc drawshape6
 mov bp,sp
 mov di,[bp+2]
 sub di,1887
-horline di 15 3
+push di
+sub di,10
+horline di 15 12
+pop di
 sub di,4170
 push di
 horline di 15 6
 setlaser di 0
 setlaser di 1
+push di
+sub di,663
+verline di 15 3
+pop di
 add di,320
 setlaser di 2
 setlaser di 0
 sub di,4468
 verline di 15 14
 sub di,2
-horline di 15 3
+push di
+sub di,10
+horline di 15 12
+pop di
 pop di
 add di,12
 horline di 15 6
 add di,11
 setlaser di 3
 setlaser di 1
+push di
+sub di,618
+verline di 15 3
+pop di
 add di,320
 setlaser di 3
 setlaser di 2
@@ -1409,7 +1423,12 @@ push di
 add di,30
 verline di 15 14
 sub di,15
+push di
+sub di,15
+horline di 15 15
+add di,1295
 pixel di 0Eh
+pop di
 add di,2575
 mov cl,5
 @7rightlaser:
@@ -1953,23 +1972,25 @@ mov ds, ax           ;ds = segment for data
 mov ax,bufferseg 
 mov es,ax            ;es = segment for buffer
 assume es:bufferseg  ;bind es to bufferseg
-call mainmenu            ;generate the game
+;call mainmenu            ;generate the game
+mov ax,13h    
+int 10h              ;switch to mode 13h
 
 
 
 
 
 
-;calc pcor 90 100
-;call drawlvlframe
-;calc wall 120 100
-;push [wall]
-;call drawshape
-;calc wall 120 100
-;push [wall]
-;call drawshape14
+calc pcor 90 100
+call drawlvlframe
+calc wall 120 100
+push [wall]
+call drawshape
+calc wall 120 100
+push [wall]
+call drawshape6
 
-;5 6 7
+;5
 
 
 @waitforkey:
