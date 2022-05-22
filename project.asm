@@ -12,6 +12,7 @@ filebuffer db 6 dup(?)
 score dw 0
 wall dw ?
 hiddendoor dw 0
+secret14 dw 0
 pcor dw  ?  ; coordinates for player
 pcorbackup dw ? ; Backup of pcor
 upcor db ?,?
@@ -250,8 +251,23 @@ int 21h
 push [score]
 call integertostring
 lea dx,[rinttostr]
-mov ah,09h
+mov ah,9h
 int 21h
+cmp [secrets],0
+je @displayend
+mov ah,2
+mov dl,13
+int 21h
+mov dl,0Ah
+int 21h
+lea dx,[secretmsg]
+mov ah,9h
+int 21h
+mov ah,2
+add [secrets],'0'
+mov dl,[secrets]
+int 21h
+@displayend:
 ret
 endp displayscore
 
@@ -1075,7 +1091,13 @@ calc wall 20 302
 verline [wall] 15 82
 calc wall 182 20
 horline [wall] 15 142
-
+cmp [hiddendoor],10
+jne @frameend
+calc wall 170 20
+verline di 12h 5
+sub di,10
+pixel di 13h
+@frameend:
 ret
 endp drawlvlframe
 
@@ -1610,6 +1632,14 @@ add di,2570
 pixel di 2Bh
 add di,1280
 pixel di 31h
+push di
+add di,10
+cmp [secret14],1
+jg @14cont
+pixel di 13h
+inc [secret14]
+@14cont:
+pop di
 add di,1280
 pixel di 2Bh
 pop di
@@ -1923,23 +1953,21 @@ mov ds, ax           ;ds = segment for data
 mov ax,bufferseg 
 mov es,ax            ;es = segment for buffer
 assume es:bufferseg  ;bind es to bufferseg
-;call mainmenu            ;generate the game
-mov ax,13h    
-int 10h              ;switch to mode 13h
+call mainmenu            ;generate the game
 
 
 
 
 
 
-calc pcor 90 100
-call drawlvlframe
-calc wall 120 100
-push [wall]
-call drawshape
-calc wall 120 100
-push [wall]
-call drawshape14
+;calc pcor 90 100
+;call drawlvlframe
+;calc wall 120 100
+;push [wall]
+;call drawshape
+;calc wall 120 100
+;push [wall]
+;call drawshape14
 
 ;5 6 7
 
@@ -2079,7 +2107,8 @@ cmp [byte ptr es:di],0Eh
 je @incscore
 cmp [byte ptr es:di],2Bh
 je @largescore
-cmp [byte ptr es:di],4Fh
+cmp [byte ptr es:di],13h
+je @secretcoll
 cmp [byte ptr es:di],9
 jne @stopmovement
 dec [health]
@@ -2106,6 +2135,12 @@ jmp @moveplayer
 @largescore:
 add [score],5
 jmp @moveplayer
+
+@secretcoll:
+inc [secrets]
+mov [byte ptr laser],0
+call selectlvl
+jmp @waitforkey
 
 @goalreached:
 mov [byte ptr laser],0
