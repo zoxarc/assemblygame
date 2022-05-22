@@ -1851,7 +1851,7 @@ calc wall 120 100
 push [wall]
 call drawshape9
 
-;9 12 13 14
+;12 13 14
 
 
 @waitforkey:
