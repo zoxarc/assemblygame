@@ -23,6 +23,9 @@ mainmsg db 'load existing save? (y or n):','$'
 scoremsg db 'game over! your score is:','$'
 secretmsg db 'secrets found:','$'
 restartmsg db 'would you like to restart(y or n)?','$'
+startmsg db 'welcome. use w,a,s,d to move, space to reset the level and esc to quit',0Ah,13,'$'
+startmsg2 db 'your goal is to collect the yellow orbs.',0Ah,13,'$'
+startmsg3 db 'to go to the next level go to the green orb',0Ah,13,'$'
 secrets db 0
 mainin db ?
 cshape db 16 dup(0)
@@ -174,8 +177,14 @@ proc mainmenu
 mov al,03h
 mov ah,0
 int 10h
-lea dx,[mainmsg]
+lea dx,[startmsg]
 mov ah,9h
+int 21h
+lea dx,[startmsg2]
+int 21h
+lea dx,[startmsg3]
+int 21h
+lea dx,[mainmsg]
 int 21h
 mov ah,01h
 int 21h
@@ -202,8 +211,7 @@ proc endprogram
 call filesave
 mov ax,0003h
 int 10h
-;call displayscore
-mov [health],0
+call displayscore
 cmp [health],0
 jne @pend
 mov ax, 4c00h
@@ -278,12 +286,12 @@ int 21h
 mov dl,0Ah
 mov ah,2
 int 21h
-mov dl,13h
+mov dl,13
 int 21h
 lea dx,[restartmsg]
 mov ah,9
 int 21h
-mov ah,1
+mov ah,8
 int 21h
 mov [health],0
 cmp al,'y'
@@ -2487,7 +2495,7 @@ jmp start
 exit:
 mov ax,0003h
 int 10h
-;call displayscore
+call displayscore
 cmp [health],0
 jne @restartck
 call filesave
