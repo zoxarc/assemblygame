@@ -1,1 +1,1 @@
-a school project
+a simple assembly game
