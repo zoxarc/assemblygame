@@ -22,6 +22,7 @@ pdir dw 3       ; 0 is left, 1 is up, 2 is right, 3 is down
 mainmsg db 'load existing save? (y or n):','$'
 scoremsg db 'game over! your score is:','$'
 secretmsg db 'secrets found:','$'
+restartmsg db 'would you like to restart(y or n)?','$'
 secrets db 0
 mainin db ?
 cshape db 16 dup(0)
@@ -254,7 +255,7 @@ lea dx,[rinttostr]
 mov ah,9h
 int 21h
 cmp [secrets],0
-je @displayend
+je @restart
 mov ah,2
 mov dl,13
 int 21h
@@ -267,6 +268,29 @@ mov ah,2
 add [secrets],'0'
 mov dl,[secrets]
 int 21h
+@restart:
+mov dl,0Ah
+mov ah,2
+int 21h
+mov dl,13h
+int 21h
+lea dx,[restartmsg]
+mov ah,9
+int 21h
+mov ah,1
+int 21h
+cmp al,'y'
+jne @displayend
+mov ax,[maxhealth]
+mov [health],ax
+mov [byte ptr laser],0
+mov [currentlvl],0
+mov [score],0
+mov [hiddendoor],0
+mov [secrets],0
+mov [secret14],0
+mov [lasert],0
+call clearscreen
 @displayend:
 ret
 endp displayscore
@@ -1133,34 +1157,6 @@ ret
 endp selectlvl
 
 
-proc drawshapea
-mov bp,sp
-mov di,[bp+2]
-horline di 15 35
-sub di,12160
-horline di 15 35
-verline di 15 20
-
-add di,68
-
-verline di 15 20
-ret 2
-endp drawshapea
-
-proc drawshape
-mov bp,sp
-mov di,[bp+2]
-add di,640
-horline di 4 45
-sub di,13442
-horline di 4 45
-verline di 4 30
-
-add di,72
-verline di 4 30
-ret 2
-endp drawshape
-
 ;these procedures the "patterns" with which levels are generated
 proc drawshape1
 mov bp,sp
@@ -1962,6 +1958,273 @@ pop si
 ret
 endp rgen
 
+proc restart
+mov ax,0003h
+int 10h
+@restartend:
+ret
+endp restart
+
+proc vseg
+mov cl,2
+@vseg:
+mov [byte ptr es:di],9
+add di,320
+dec cl
+jnz @vseg
+ret
+endp vseg
+
+proc hseg
+mov cl,2
+@hseg:
+mov [byte ptr es:di],9
+inc di
+dec cl
+jnz @hseg
+ret
+endp hseg
+
+proc num0
+push di
+add di,320
+call vseg
+add di,320
+call vseg
+inc di
+call hseg
+pop di
+inc di
+call hseg
+add di,320
+call vseg
+add di,320
+call vseg
+ret
+endp num0
+
+proc num1
+add di,323
+call vseg
+add di,320
+call vseg
+ret
+endp num1
+
+proc num2
+inc di
+call hseg
+add di,320
+call vseg
+sub di,2
+call hseg
+add di,317
+call vseg
+inc di
+call hseg
+ret
+endp num2
+
+proc num3
+push di
+call hseg
+add di,958
+call hseg
+add di,958
+call hseg
+add di,958
+pop di
+add di,322
+call vseg
+add di,320
+call vseg
+ret
+endp num3
+
+proc num4
+push di
+add di,323
+call vseg
+pop di
+add di,320
+call vseg
+inc di
+call hseg
+add di,320
+call vseg
+ret
+endp num4
+
+proc num5
+push di
+inc di
+call hseg
+pop di
+add di,320
+call vseg
+inc di
+call hseg
+add di,320
+call vseg
+sub di,2
+call hseg
+ret
+endp num5
+
+proc num6
+push di
+inc di
+call hseg
+pop di
+push di
+add di,320
+call vseg
+push di
+inc di
+call hseg
+add di,320
+call vseg
+pop di
+add di,320
+call vseg
+inc di
+call hseg
+pop di
+ret
+endp num6
+
+proc num7
+call hseg
+add di,320
+call vseg
+add di,320
+call vseg
+ret
+endp num7
+
+proc num8
+mov ch,2
+@numl:
+push di
+add di,320
+call vseg
+pop di
+inc di
+call hseg
+add di,320
+call vseg
+sub di,3
+dec ch
+jnz @numl
+inc di
+call hseg
+ret
+endp num8
+
+proc num9
+push di
+add di,320
+call vseg
+pop di
+inc di
+call hseg
+add di,320
+call vseg
+sub di,3
+dec ch
+inc di
+call hseg
+add di,320
+call vseg
+sub di,2
+call hseg
+ret 
+endp num9
+
+proc selectnum
+mov bp,sp
+mov si,[bp+2]
+cmp si,1
+jl @cnum0
+je @cnum1
+cmp si,3
+jl @cnum2
+je @cnum3
+cmp si,5
+jl @cnum4
+je @cnum5
+cmp si,7
+jl @cnum6
+je @cnum7
+cmp si,9
+jl @cnum8
+je @cnum9
+@cnum0:
+call num0
+jmp @selectend
+@cnum1:
+call num1
+jmp @selectend
+@cnum2:
+call num2
+jmp @selectend
+@cnum3:
+call num3
+jmp @selectend
+@cnum4:
+call num4
+jmp @selectend
+@cnum5:
+call num5
+jmp @selectend
+@cnum6:
+call num6
+jmp @selectend
+@cnum7:
+call num7
+jmp @selectend
+@cnum8:
+call num8
+jmp @selectend
+@cnum9:
+call num9
+jmp @selectend
+
+@selectend:
+ret 2
+endp selectnum
+
+proc cleardigit
+push di
+mov cx,3
+@digitclear:
+verline di 12h 5
+add di,2
+dec cx
+jnz @digitclear
+pop di
+ret
+endp cleardigit
+
+proc drawnum
+calc wall 10 280
+mov di,[wall]
+mov ax,[score]
+@drawnuml:
+call cleardigit
+xor dx,dx
+mov bx,10
+div bx
+push di
+push dx
+call selectnum
+pop di
+sub di,8
+test ax,ax
+jnz @drawnuml
+ret
+endp drawnum
+
 ; ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 start:
@@ -1975,6 +2238,7 @@ call mainmenu            ;generate the game
 
 
 @waitforkey:
+call drawnum
 call buffertoscreen
 inc [lasert]
 ;warning the number may be needed to manualy adjusted in case the lasers are slow, it depends on the cycles
@@ -2153,15 +2417,19 @@ jmp @waitforkey
 
 
 
+@restartck:
+jmp start
 
 ; --------------------------
 
         
 exit:
-call filesave
 mov ax,0003h
 int 10h
 call displayscore
+cmp [health],0
+jne @restartck
+call filesave
 mov ax, 4c00h
 int 21h
 END start
